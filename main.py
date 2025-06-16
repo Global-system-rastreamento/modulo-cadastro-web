@@ -698,7 +698,7 @@ def page_cadastro_usuario():
                 if not st.session_state.contract_placas_list:
                     st.warning("Adicione pelo menos um veículo ao contrato.")
                 else:
-                    with st.spinner("Gerando contrato DOCX..."):
+                    with st.spinner("Gerando contrato..."):
                         # 1. Coletar todos os dados
                         dados_contrato_final = preparar_dados_para_template_contrato()
                         
