@@ -1,5 +1,8 @@
-from src.spc_integration.spc_integration import *
-from src.contract.contract_integration import *
+from app.integrations.spc_integration import *
+from app.integrations.contract_integration import *
+from app.config.design import *
+from app.config.settings import *
+from app.dialogs.report_dialog import report_dialog
 
 import streamlit as st
 from datetime import date, datetime 
@@ -9,230 +12,41 @@ import docx
 import unidecode
 import os
 import subprocess
+import logging
 import warnings
 
 warnings.filterwarnings("ignore")
 
 
-# --- Configuração da Página e CSS (Existente) ---
-st.set_page_config(layout="wide", page_title="Cadastro de Clientes", page_icon=":house:")
-custom_css = """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-    @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+# --- Configuração da Página e CSS ---
+apply_design()
 
-    :root {
-        --franchisee-main-color: #006535;
-        --header-bg-color: #0b3747;
-        --button-text-color: black;
-        --input-bg-color: #f4f4f4;
-        --input-border-color: #ced4da;
-        --input-text-color: #555;
-        --label-text-color: #666;
-        --body-text-color: #212529;
-        --section-title-color: #333;
-        --streamlit-font-family: 'Roboto', Arial, sans-serif;
-    }
+# --- Configurações Gerais ---
+apply_general_settings()
 
-    body, .stApp {
-        font-family: var(--streamlit-font-family) !important;
-        background-color: #EBEBEB;
-        color: var(--body-text-color);
-    }
-
-    section[data-testid="stSidebar"] {
-        display: none !important; /* OCULTA A SIDEBAR ORIGINAL */
-    }
-
-    /* --- Estilos para o Novo Cabeçalho no Topo da Página --- */
-    .app-header-container {
-        background-color: var(--header-bg-color) !important;
-        padding: 15px 25px !important; /* Padding horizontal maior */
-        color: var(--button-text-color) !important;
-        margin-bottom: 1.5rem; /* Espaço antes do conteúdo principal */
-        border-bottom: 3px solid var(--franchisee-main-color);
-    }
-
-    .app-header-container h5 { /* Saudação */
-        font-size: 1.1rem !important;
-        font-weight: 700 !important;
-        color: var(--button-text-color) !important;
-        margin-bottom: 0.5rem;
-        text-align: left;
-    }
-
-    .app-header-container .stImage img {
-        background-color: #ececec;
-        border-radius: 12px;
-        padding: 10px;
-        max-width: 150px; /* Limita tamanho da logo */
-    }
-
-    .app-header-container .stButton button,
-    .app-header-container .stLinkButton a {
-        border: 2px solid var(--button-text-color) !important;
-        border-radius: 20px !important;
-        padding: 6px 12px !important; /* Botões menores no header */
-        font-weight: 700 !important;
-        font-size: 0.85rem !important; /* Texto menor */
-        text-align: center;
-        margin-right: 8px; /* Espaçamento entre botões */
-        margin-bottom: 8px; /* Espaçamento se quebrar linha */
-        text-decoration: none;
-        transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
-        background-color: #7a7b43;
-        color: var(--button-text-color) !important;
-        display: inline-block; /* Para ficarem na mesma linha */
-    }
-
-    .app-header-container .stButton button:hover,
-    .app-header-container .stLinkButton a:hover {
-        background-color: #5e5f34 !important;
-        transform: translateY(-1px);
-    }
-    
-    .app-header-container .stButton button[kind="secondary"], /* Para botões específicos, se necessário */
-    .app-header-container .stLinkButton a[href*="manutencoes"] { background-color: #a77a24 !important; }
-    .app-header-container .stLinkButton a[href*="painel"] { background-color: #2f073b !important; }
-    .app-header-container .stLinkButton a[href*="financeiro"] { background-color: #2344a4 !important; }
-    /* etc. para outros botões com cores específicas */
-
-    .header-section-title {
-        font-size: 0.9rem !important;
-        font-weight: bold !important;
-        color: var(--button-text-color) !important;
-        margin-top: 10px;
-        margin-bottom: 5px;
-        display: block;
-        width: 100%; /* Ocupar toda a largura da coluna */
-        text-align: left;
-    }
-    .header-logo-greet-col {
-        display: flex;
-        align-items: center; /* Alinha logo e saudação verticalmente */
-        gap: 20px; /* Espaço entre logo e saudação */
-    }
+# --- Constantes ---
 
 
-    /* --- Estilos do Conteúdo Principal (Restante da página) --- */
-    .main .block-container {
-        padding-top: 1rem !important; /* Reduzido pois o header agora tem margin-bottom */
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
-    }
+X_TOKEN_API = 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7'
+API_BASE_URL = 'https://api.plataforma.app.br'
 
-    .main .block-container h1 { /* st.title */
-        font-family: var(--streamlit-font-family) !important;
-        color: var(--section-title-color) !important;
-        font-weight: bold !important;
-        font-size: 1.9em !important;
-        margin-bottom: 1rem;
-    }
+COMMON_API_HEADERS = {
+    'accept': 'application/json, text/plain, */*',
+    'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    'origin': 'https://globalsystem.plataforma.app.br',
+    'priority': 'u=1, i',
+    'referer': 'https://globalsystem.plataforma.app.br/',
+    'sec-ch-ua': '"Not(A:Brand";v="99", "Opera GX";v="118", "Chromium";v="133"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-site',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 OPR/118.0.0.0',
+    'x-token': X_TOKEN_API
+}
 
-    .section-title {
-        font-family: var(--streamlit-font-family) !important;
-        font-size: 1.4em !important;
-        font-weight: 700 !important;
-        color: var(--section-title-color) !important;
-        margin-top: 25px;
-        margin-bottom: 15px;
-        display: flex;
-        align-items: center;
-    }
-    .section-title strong {
-        color: var(--section-title-color) !important;
-    }
-
-    .stTextInput > div > div > input,
-    .stNumberInput > div > div > input,
-    .stDateInput > div > div > input,
-    .stTextArea > div > div > textarea,
-    div[data-baseweb="select"] > div {
-        font-family: var(--streamlit-font-family) !important;
-        font-size: 0.9em !important;
-        font-weight: 400 !important;
-        color: var(--input-text-color) !important;
-        background-color: var(--input-bg-color) !important;
-        border: 1px solid var(--input-border-color) !important;
-        border-radius: 4px !important;
-        box-shadow: 0 1px 1px rgba(0,0,0,0.075) inset !important;
-        height: 38px !important;
-        box-sizing: border-box;
-    }
-    .stTextArea > div > div > textarea {
-        height: auto !important;
-        min-height: 76px;
-    }
-    div[data-baseweb="select"] input {
-        color: var(--input-text-color) !important;
-    }
-    div[data-baseweb="select"] svg {
-        fill: var(--input-text-color) !important;
-    }
-
-    .stTextInput > label,
-    .stNumberInput > label,
-    .stDateInput > label,
-    .stTextArea > label,
-    .stSelectbox > label,
-    .stCheckbox > label {
-        font-family: var(--streamlit-font-family) !important;
-        font-size: 1em !important;
-        font-weight: 700 !important;
-        color: var(--label-text-color) !important;
-        margin-bottom: 5px !important;
-        display: block !important;
-        padding-left: 0px !important;
-    }
-    .stCheckbox > label > div[data-testid="stMarkdownContainer"] > p {
-        font-weight: 400 !important;
-        color: var(--input-text-color) !important;
-    }
-
-    .stForm .stButton button[kind="primary"] {
-        font-family: var(--streamlit-font-family) !important;
-        background-color: var(--franchisee-main-color) !important;
-        color: var(--button-text-color) !important;
-        border: none !important;
-        border-radius: 4px !important;
-        padding: 10px 20px !important;
-        font-weight: 700 !important;
-        font-size: 1.05em !important;
-        transition: background-color 0.2s ease;
-    }
-    .stForm .stButton button[kind="primary"]:hover {
-        background-color: #004a27 !important;
-    }
-
-    .stCaption {
-        font-family: var(--streamlit-font-family);
-        font-size: 0.9em !important;
-        color: #555 !important;
-        margin-bottom: 1rem;
-    }
-
-    .tooltip-icon {
-        font-family: 'Material Icons';
-        font-size: 1.3rem;
-        color: var(--label-text-color);
-        margin-left: 8px;
-        cursor: help;
-        vertical-align: middle;
-    }
-    .tooltip-icon:hover {
-        color: var(--franchisee-main-color);
-    }
-
-    hr {
-        border: none;
-        border-top: 1px solid #ddd;
-        margin-top: 1.5rem !important;
-        margin-bottom: 1.5rem !important;
-    }
-    </style>
-"""
-st.markdown(custom_css, unsafe_allow_html=True)
-
+# --- Inicialização de Variáveis de Estado ---
 if 'dados_spc_json' not in st.session_state:
     st.session_state.dados_spc_json = None
 if 'pdf_bytes_spc' not in st.session_state:
@@ -243,51 +57,6 @@ if 'consulta_realizada_spc' not in st.session_state:
     st.session_state.consulta_realizada_spc = False
 if "nome_operador" not in st.session_state:
     st.session_state["nome_operador"] = "Juan"
-
-
-# --- Tooltips (Existente) ---
-tooltip_info_basicas = "Preencha as informações básicas do Usuário, fique atento a campos obrigatórios (*)." 
-tooltip_dados_acesso = "Dados para o seu cliente poder efetuar login no sistema." 
-tooltip_funcionalidades = "Ative ou desative funcionalidades para este usuário." 
-tooltip_financeiro = "Dados para controle financeiro do Usuário. Preencha todos os campos para ter relatórios e gráficos completos."
-tooltip_spc = "Consulte a situação do CPF ou CNPJ do cliente nos serviços de proteção ao crédito. Os dados retornados podem pré-preencher o formulário abaixo."
-tooltip_contrato = "Configure e gere o contrato de prestação de serviços e o manual do aplicativo para o cliente."
-tooltip_dados_adicionais = "Preencha os dados adicionais do Usuário."
-
-# --- Cabeçalho (Existente) ---
-with st.container():
-    st.markdown('<div class="app-header-container">', unsafe_allow_html=True)
-    col1_header, _, col3_header = st.columns([0.25, 0.5, 0.25]) 
-    with col1_header:
-        st.markdown('<div class="header-logo-greet-col">', unsafe_allow_html=True)
-        try:
-            st.image("https://sisras-logos.s3.sa-east-1.amazonaws.com/globalsystem3.jpg", width=120) 
-        except Exception:
-            st.caption("Logo")
-        now = datetime.now()
-        greeting = "Bom Dia" if now.hour < 12 else "Boa Tarde" if now.hour < 18 else "Boa Noite"
-        st.markdown(f"<h5>{greeting}!</h5>", unsafe_allow_html=True) 
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col3_header:
-        st.markdown('<div class="header-section-title">Navegação Principal</div>', unsafe_allow_html=True) 
-        nav_cols = st.columns(2) 
-        with nav_cols[0]:
-            if st.button("🏠 Início", key="header_home_button", help="Ir para o menu principal", use_container_width=True): 
-                st.toast("Navegando para Início (exemplo)") 
-        with nav_cols[1]:
-            if st.button("Sair", key="header_logout_button", help="Deslogar do sistema", use_container_width=True): 
-                st.toast("Logout solicitado (funcionalidade de exemplo)") 
-    st.markdown('</div>', unsafe_allow_html=True) 
-
-# --- Conteúdo Principal (Existente) ---
-st.caption("Navegação: Menu de Opções > Usuários > Adicionando Usuário") 
-st.markdown("---") 
-col_form_icon, col_form_title = st.columns([0.05, 0.95], gap="small")
-with col_form_icon:
-    st.write('') # Placeholder for icon if needed
-    st.markdown("<span class='material-icons' style='font-size: 2.8rem; color: var(--section-title-color);'>group_add</span>", unsafe_allow_html=True) 
-with col_form_title:
-    st.title("Adicionando Usuário") 
 
 # Formulário Principal
 form_keys_defaults = {
@@ -334,7 +103,10 @@ contract_keys_defaults = {
 }
 for key, default_value in contract_keys_defaults.items():
     if key not in st.session_state: st.session_state[key] = default_value
+
 # --- Fim da Inicialização ---
+
+# --- Funções Auxiliares ---
 
 # --- Função para popular formulário ---
 def popular_formulario_com_spc(dados_spc_json):
@@ -461,501 +233,1001 @@ def cadastrar_cliente(dados_formulario, is_cnpj=False):
     else:
         st.error("Erro ao cadastrar cliente. Verifique os dados e tente novamente.")
         st.write(response.json())
-    
 
-
-# Formulário Principal (adicionar chaves para todos os campos controláveis)
-for key, default_value in form_keys_defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = default_value
-
-# --- SPC integration ---
-st.markdown("---")
-st.markdown(f"""<h3 class="section-title">Consulta SPC/SERASA <span class="material-icons tooltip-icon" title="{tooltip_spc}">credit_score</span></h3>""", unsafe_allow_html=True)
-
-with st.container(key="consulta_spc_form_widget", border=True): # Renomeado para evitar conflito com a key do form principal
-
-    col_doc_spc, col_tipo_spc = st.columns(2)
-    with col_doc_spc:
-        documento_spc_input = st.text_input("Documento (CPF ou CNPJ):", placeholder="Digite o CPF ou CNPJ", key="documento_spc_text_input")
-    with col_tipo_spc:
-        tipo_pessoa_spc_radio = st.radio("Tipo de Pessoa:", ("Pessoa Física (CPF)", "Pessoa Jurídica (CNPJ)"), horizontal=True, key="tipo_pessoa_spc_radio_select")
-
-
-    submit_button_spc = st.button("🔍 Consultar SPC/SERASA")
-
-if submit_button_spc:
-    st.session_state.dados_spc_json = None 
-    st.session_state.pdf_bytes_spc = None
-    st.session_state.consulta_realizada_spc = True
-
-    doc_limpo = "".join(filter(str.isdigit, st.session_state.documento_spc_text_input))
-    tipo_doc_api = 'F' if "Física" in st.session_state.tipo_pessoa_spc_radio_select else 'J'
-
-    if not doc_limpo:
-        st.error("Por favor, insira um número de documento válido.")
-        st.session_state.consulta_realizada_spc = False
-    else:
-        with st.spinner("Consultando SPC/SERASA... Aguarde."):
-            dados_consulta = consultar_spc_api(doc_limpo, tipo_doc_api)
-        
-        if dados_consulta:
-            if dados_consulta.get('result', {}).get('error') == 'true':
-                mensagem_erro_api = dados_consulta.get('result', {}).get('message', 'Erro desconhecido retornado pela API.')
-                st.error(f"Erro na consulta SPC: {mensagem_erro_api}")
-                st.session_state.dados_spc_json = None
-            elif not dados_consulta.get('result', {}).get('return_object', {}).get('resultado'):
-                 st.warning("A consulta foi realizada, mas não retornou dados de resultado para o documento informado.")
-                 st.session_state.dados_spc_json = None 
-            else:
-                st.success("Consulta SPC/SERASA realizada com sucesso!")
-                st.session_state.dados_spc_json = dados_consulta
-
-                # Tenta popular o formulário principal
-                popular_formulario_com_spc(st.session_state.dados_spc_json)
-
-                markdown_report = gerar_relatorio_spc_markdown(st.session_state.dados_spc_json)
-                if "## Erro" not in markdown_report: 
-                    pdf_data, pdf_name = markdown_para_pdf_streamlit(markdown_report, f"relatorio_spc_{doc_limpo}.pdf")
-                    if pdf_data:
-                        st.session_state.pdf_bytes_spc = pdf_data
-                        st.session_state.pdf_filename_spc = pdf_name
-                    else:
-                        st.error("Falha ao gerar o arquivo PDF para download.")
-                else:
-                    st.error("Falha ao gerar o conteúdo do relatório para o PDF.")
-                    with st.expander("Detalhes do Erro na Geração do Relatório (Markdown)", expanded=False):
-                        st.markdown(markdown_report)
-        else:
-            st.session_state.dados_spc_json = None
-
-if st.session_state.consulta_realizada_spc:
-    if st.session_state.dados_spc_json:
-        if st.session_state.pdf_bytes_spc:
-            st.download_button(
-                label="📄 Baixar Relatório SPC em PDF",
-                data=st.session_state.pdf_bytes_spc,
-                file_name=st.session_state.pdf_filename_spc,
-                mime="application/pdf",
-                key="download_spc_pdf_button"
-            )
-        
-        resultado_geral = st.session_state.dados_spc_json.get('result', {}).get('return_object', {}).get('resultado', {})
-        if resultado_geral:
-            restricao_status = "RESTRITO" if resultado_geral.get('restricao', False) else "REGULAR"
-            st.info(f"Situação Geral do Documento (SPC): **{restricao_status}**")
-    elif not submit_button_spc: 
-        st.info("Nenhum dado de consulta SPC para exibir ou houve um erro na última tentativa.")
-
-# --- Formulário Principal de Cadastro de Cliente (Existente) ---
-with st.container(key="cadastro_cliente_form", border=True): 
-    st.markdown(f"""<h3 class="section-title">Informações Básicas <span class="material-icons tooltip-icon" title="{tooltip_info_basicas}">help_outline</span></h3>""", unsafe_allow_html=True) 
-    # ... (campos do formulário de cadastro usando st.session_state.form_*) ...
-    cols_info1 = st.columns(5) 
-    with cols_info1[0]: 
-        st.checkbox("Ativo", key="form_ativo") 
-    with cols_info1[1]: 
-        st.checkbox("Aviso Inadimplência", value=st.session_state.form_aviso_inadimplencia, key="form_aviso_inadimplencia") 
-    with cols_info1[2]: 
-        tipo_usuario_options = ["Único", "Frotista", "Operador", "Master"] 
-        st.selectbox("Tipo de Usuário:", tipo_usuario_options, index=tipo_usuario_options.index(st.session_state.form_tipo_usuario) if st.session_state.form_tipo_usuario in tipo_usuario_options else 1, key="form_tipo_usuario") 
-    with cols_info1[3]: 
-        pessoa_options = ["Física", "Jurídica"] 
-        default_pessoa = st.session_state.tipo_pessoa_spc_radio_select.split(" ")[1]
-        st.selectbox("Pessoa:", pessoa_options, index=pessoa_options.index(default_pessoa) if default_pessoa in pessoa_options else 0, key="form_pessoa_tipo") 
-    with cols_info1[4]: 
-        st.text_input("Nome:", placeholder="Nome completo ou Razão Social", value=unidecode.unidecode(st.session_state.form_nome), key="form_nome") 
-
-    cols_info2 = st.columns(5) 
-    with cols_info2[0]: 
-        st.text_input("Responsável:", placeholder="Nome do responsável", value=st.session_state.form_responsavel, key="form_responsavel") 
-    with cols_info2[1]: 
-        st.text_input("Endereço:", placeholder="Rua, Número, Bairro, Cidade/UF - CEP", value=st.session_state.form_endereco, key="form_endereco") 
-    with cols_info2[2]: 
-        st.text_input("Tel. Celular:", placeholder="(XX) XXXXX-XXXX", value=st.session_state.form_tel_celular, key="form_tel_celular") 
-    with cols_info2[3]: 
-        st.text_input("Tel. Residencial:", placeholder="(XX) XXXX-XXXX", value=st.session_state.form_tel_residencial, key="form_tel_residencial") 
-    with cols_info2[4]: 
-        st.text_input("Tel. Comercial:", placeholder="(XX) XXXX-XXXX", value=st.session_state.form_tel_comercial, key="form_tel_comercial") 
-
-    cols_info3 = st.columns(3) 
-    with cols_info3[0]: 
-        st.text_input("E-mail:", placeholder="exemplo@dominio.com", value=st.session_state.form_email, key="form_email") 
-    with cols_info3[1]: 
-        st.date_input("Data de nascimento:", value=st.session_state.form_data_nascimento, min_value=date(1900,1,1), format='DD/MM/YYYY', key="form_data_nascimento") 
-    with cols_info3[2]: 
-        cpf_cnpj_label = "CPF:" if st.session_state.form_pessoa_tipo == "Física" else "CNPJ:" 
-        cpf_cnpj_placeholder = "000.000.000-00" if st.session_state.form_pessoa_tipo == "Física" else "00.000.000/0000-00" 
-        st.text_input(cpf_cnpj_label, placeholder=cpf_cnpj_placeholder, value=st.session_state.form_cpf_cnpj, key="form_cpf_cnpj") 
-    
-    # ... (Restante dos campos: Dados de Acesso, Funcionalidades, Financeiro) ...
-    st.markdown("---") 
-    st.markdown(f"""<h3 class="section-title">Dados de Acesso <span class="material-icons tooltip-icon" title="{tooltip_dados_acesso}">vpn_key</span></h3>""", unsafe_allow_html=True) 
-    cols_acesso = st.columns(3) 
-    with cols_acesso[0]: 
-        st.text_input("Login:", placeholder="Login desejado", value=st.session_state.form_login, key="form_login") 
-    with cols_acesso[1]: 
-        st.text_input("Senha:", placeholder="Senha forte", value=''.join(list(filter(str.isdigit, st.session_state.form_cpf_cnpj)))[:6], key="form_senha") 
-    with cols_acesso[2]: 
-        st.text_input("Repita a senha:", placeholder="Confirme a senha", value=''.join(list(filter(str.isdigit, st.session_state.form_cpf_cnpj)))[:6], key="form_confirmar_senha") 
-    st.markdown("---")
-    st.markdown(f"""<h3 class="section-title">Dados Adicionais <span class="material-icons tooltip-icon" title="{tooltip_financeiro}">view_list</span></h3>""", unsafe_allow_html=True)
-
-    default_additional_data = {
-        "pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
-Função: Proprietário
-Telefone: {st.session_state.form_tel_celular}""",
-    "financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
-
-E-mail: {st.session_state.form_email}
-
-Whatsapp para boletos:
-Telefone: {st.session_state.form_tel_celular}
-Nome: {st.session_state.form_responsavel}""",    
-    "negociacao": f"""Adesão: {0.00}
-Mensalidade: {0.00}
-Desinstalação: {0.00}
-Reinstalação: 100,00""",    
-    "falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
-Função: Proprietário
-Telefone: {st.session_state.form_tel_celular}""",
-    "pessoas_acesso": "."
+@st.cache_data(ttl=600) # Cache de 10 minutos
+def get_client_data(page=1, search_term="", ativo_filter=None, financ_filter=None):
+    """Faz a requisição à API para obter os dados dos clientes."""
+    # AVISO DE SEGURANÇA: O token está exposto no código. Use st.secrets em produção.
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'X-Token': 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7',
+        'Origin': 'https://globalsystem.plataforma.app.br',
+        'Referer': 'https://globalsystem.plataforma.app.br/'
     }
+    
+    params = {
+        'include_managers': 1,
+        'items_per_page': 50,
+        'paginate': 1,
+        'current_page': page,
+    }
+    
+    if search_term:
+        params['all'] = search_term
 
-    for key, value in default_additional_data.items():
-        cols_additional_data = st.columns([1, 0.05, 1])
-        with cols_additional_data[0]:
-            st.text_area(label="", label_visibility="hidden", value=f"{key.replace('_', ' ').upper()}:", key=f"form_additional_data_{key}", height=150)
-        with cols_additional_data[2]:
-            st.text_area(label="", label_visibility="hidden", value=value, key=f"form_additional_data_{key}_value", height=150)
+    if ativo_filter:
+            params['active'] = ativo_filter
+    if financ_filter:
+            params['financial_alert'] = financ_filter
+    
+    url = "https://api.plataforma.app.br/manager/users"
+    
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response.raise_for_status()  # Lança um erro para códigos de status ruins (4xx ou 5xx)
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erro ao conectar com a API: {e}")
+        return None
+    
+# --- Fim das Funções Auxiliares ---
 
+# --- Tooltips ---
+tooltip_info_basicas = "Preencha as informações básicas do Usuário, fique atento a campos obrigatórios (*)." 
+tooltip_dados_acesso = "Dados para o seu cliente poder efetuar login no sistema." 
+tooltip_funcionalidades = "Ative ou desative funcionalidades para este usuário." 
+tooltip_financeiro = "Dados para controle financeiro do Usuário. Preencha todos os campos para ter relatórios e gráficos completos."
+tooltip_spc = "Consulte a situação do CPF ou CNPJ do cliente nos serviços de proteção ao crédito. Os dados retornados podem pré-preencher o formulário abaixo."
+tooltip_contrato = "Configure e gere o contrato de prestação de serviços e o manual do aplicativo para o cliente."
+tooltip_dados_adicionais = "Preencha os dados adicionais do Usuário."
+
+def get_user_data_by_id(user_id):
+    """Faz a requisição à API para obter os dados de um único usuário."""
+    if not user_id:
+        return None
+    
+    url = f"https://api.plataforma.app.br/user/{user_id}"
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'X-Token': 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7',
+        'Origin': 'https://globalsystem.plataforma.app.br',
+        'Referer': 'https://globalsystem.plataforma.app.br/'
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erro ao buscar dados do usuário: {e}")
+        return None
+
+def format_date_from_api(date_string):
+    """Converte 'YYYY-MM-DDTHH:MM:SS+0000' para um objeto date."""
+    if not date_string:
+        return None
+    try:
+        return datetime.strptime(date_string.split('T')[0], '%Y-%m-%d').date()
+    except (ValueError, IndexError):
+        return None
+
+def populate_form_with_user_data(user_data):
+    """Preenche o formulário de cadastro com dados de um usuário da API."""
+    if not user_data:
+        st.warning("Não há dados do usuário para preencher o formulário.")
+        return
+
+    permission_map = {1: "Único", 2: "Frotista", 3: "Operador", 4: "Master"}
+
+    # Preenche as informações básicas
+    st.session_state.form_ativo = bool(user_data.get('ativo', 0))
+    st.session_state.form_aviso_inadimplencia = bool(user_data.get('financ', 0))
+    st.session_state.form_tipo_usuario = permission_map.get(user_data.get('nivel', 2), "Frotista")
+    st.session_state.form_pessoa_tipo = "Jurídica" if user_data.get('pessoa') == 2 else "Física"
+    st.session_state.form_nome = user_data.get('nome', '').upper()
+    st.session_state.form_responsavel = user_data.get('respon', '').upper()
+    st.session_state.form_endereco = user_data.get('endereco', '').upper()
+    st.session_state.form_tel_celular = user_data.get('fcel', '')
+    st.session_state.form_tel_residencial = user_data.get('fres', '')
+    st.session_state.form_email = user_data.get('email', '')
+    st.session_state.form_data_nascimento = format_date_from_api(user_data.get('birth_date'))
+    st.session_state.form_cpf_cnpj = user_data.get('cnpj', '')
+
+    # Preenche os dados de acesso
+    st.session_state.form_login = user_data.get('login', '')
+    financ_obs = user_data.get('financ_obs', '')
+    senha = ''.join(list(filter(str.isdigit, st.session_state.form_cpf_cnpj)))[:6] # Padrão
+    if "SENHA:" in financ_obs.upper():
+        try:
+            senha_part = financ_obs.upper().split("SENHA:")[1].strip()
+            senha = senha_part.split('.')[0].split(' ')[0]
+        except IndexError:
+            pass 
+    st.session_state.form_senha = senha
+    st.session_state.form_confirmar_senha = senha
+
+    # Preenche o financeiro
+    try:
+        mensalidade = float(user_data.get('financ_mensalidade', 0.0))
+    except (ValueError, TypeError):
+        mensalidade = 0.0
+    st.session_state.form_valor_mensalidade = mensalidade
+    try:
+        vencimento = int(user_data.get('financ_data_vencimento', 10))
+    except (ValueError, TypeError):
+        vencimento = 10
+    st.session_state.form_dia_vencimento = vencimento
+    st.session_state.form_obs_financeiro = financ_obs
+
+    st.success("Dados do usuário carregados. Verifique e edite conforme necessário.")
+
+def page_cadastro_usuario():
+    
+
+    st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
+
+    st.caption("Navegação: Menu de Opções > Usuários > Adicionando Usuário") 
     st.markdown("---") 
-    st.markdown(f"""<h3 class="section-title"><strong>Funcionalidades</strong><span class="material-icons tooltip-icon" title="{tooltip_funcionalidades}">toggle_on</span></h3>""", unsafe_allow_html=True) 
-    cols_func = st.columns(5) 
-    with cols_func[0]: 
-        st.checkbox("Habilitar Gestão de Manutenção", value=st.session_state.form_gestao_manutencao, key="form_gestao_manutencao") 
-        st.checkbox("Gestão de Controle de Cargas", value=st.session_state.form_gestao_controle_carga, key="form_gestao_controle_carga") 
-    with cols_func[1]: 
-        st.checkbox("Habilitar App Meu Veículo", value=st.session_state.form_meu_veiculo_app, key="form_meu_veiculo_app") 
-        st.checkbox("I-Button Suntech", value=st.session_state.form_i_button_suntech, key="form_i_button_suntech") 
-    with cols_func[2]:
-        st.checkbox("Habilitar Zona de Segurança", value=st.session_state.form_zona_seguranca, key="form_zona_seguranca") 
-        st.checkbox("Habilitar Comandos", value=st.session_state.form_comandos, key="form_comandos") 
-    with cols_func[3]:
-        st.checkbox("V-Button Gestão de motorista", value=st.session_state.form_vbutton_gestao_motorista, key="form_vbutton_gestao_motorista") 
-        st.checkbox("Listagem 'Eventos e Alertas'", value=st.session_state.form_listagem_eventos_alertas, key="form_listagem_eventos_alertas")
-    with cols_func[4]:
-        st.checkbox("Habilitar Cerca Eletrônica", value=st.session_state.form_cerca_eletronica, key="form_cerca_eletronica") 
-        st.checkbox("Listagem 'Falha no Sinal'", value=st.session_state.form_listagem_falha_sinal, key="form_listagem_falha_sinal")
+    col_form_icon, col_form_title = st.columns([0.05, 0.95], gap="small")
+    with col_form_icon:
+        st.write('') # Placeholder for icon if needed
+        st.markdown("<span class='material-icons' style='font-size: 2.8rem; color: var(--section-title-color);'>group_add</span>", unsafe_allow_html=True) 
+    with col_form_title:
+        st.title("Adicionando Usuário") 
 
-    st.markdown("---") 
-    st.markdown(f"""<h3 class="section-title"><strong>Financeiro</strong><span class="material-icons tooltip-icon" title="{tooltip_dados_adicionais}">monetization_on</span></h3>""", unsafe_allow_html=True) 
-    cols_financeiro = st.columns(3) 
-    with cols_financeiro[0]: 
-        st.number_input("Valor da mensalidade (base):", min_value=0.0, value=st.session_state.form_valor_mensalidade, format="%.2f", step=0.01, key="form_valor_mensalidade", help="Valor base da mensalidade. Será usado por veículo se não especificado individualmente.") 
-    with cols_financeiro[1]: 
-        st.write('')
-        st.number_input("Dia de Vencimento:", min_value=1, max_value=31, value=st.session_state.form_dia_vencimento, step=1, format="%d", key="form_dia_vencimento") 
-    with cols_financeiro[2]: 
-        st.text_area("Observação (Financeiro Cliente):", placeholder="Detalhes financeiros do cliente...", value=f'Senha: {st.session_state.form_senha}. {st.session_state.nome_operador}', key="form_obs_financeiro") 
 
-    st.markdown("<br>", unsafe_allow_html=True) 
-    cols_submit_button_main = st.columns([0.6, 0.4]) 
-    with cols_submit_button_main[1]:
-        submitted_main_form = st.button("✔ Salvar Usuário", type="primary", use_container_width=True)
+    # --- SPC integration ---
+    st.markdown("---")
+    st.markdown(f"""<h3 class="section-title">Consulta SPC/SERASA <span class="material-icons tooltip-icon" title="{tooltip_spc}">credit_score</span></h3>""", unsafe_allow_html=True)
 
-if submitted_main_form: 
-    if st.session_state.form_senha != st.session_state.form_confirmar_senha: 
-        st.error("As senhas não correspondem!")
-    else: 
-        dados_formulario_cliente = {key.replace("form_", ""): st.session_state[key] for key in form_keys_defaults if "additional_data" not in key}
-        dados_adicionais = {}
-        for k in st.session_state:
-            k = str(k)
-            if k.startswith("form_additional_data_") and not k.endswith("_value"):
-                if k.replace("form_additional_data_", "") not in dados_adicionais:
-                    dados_adicionais[k.replace("form_additional_data_", "")] = st.session_state[f"{k}_value"]
+    with st.container(key="consulta_spc_form_widget", border=True): # Renomeado para evitar conflito com a key do form principal
 
+        col_doc_spc, col_tipo_spc = st.columns(2)
+        with col_doc_spc:
+            documento_spc_input = st.text_input("Documento (CPF ou CNPJ):", placeholder="Digite o CPF ou CNPJ", key="documento_spc_text_input")
+        with col_tipo_spc:
+            tipo_pessoa_spc_radio = st.radio("Tipo de Pessoa:", ("Pessoa Física (CPF)", "Pessoa Jurídica (CNPJ)"), horizontal=True, key="tipo_pessoa_spc_radio_select")
+
+
+        submit_button_spc = st.button("🔍 Consultar SPC/SERASA")
+
+    if submit_button_spc:
+        st.session_state.dados_spc_json = None 
+        st.session_state.pdf_bytes_spc = None
+        st.session_state.consulta_realizada_spc = True
+
+        doc_limpo = "".join(filter(str.isdigit, st.session_state.documento_spc_text_input))
+        tipo_doc_api = 'F' if "Física" in st.session_state.tipo_pessoa_spc_radio_select else 'J'
+
+        if not doc_limpo:
+            st.error("Por favor, insira um número de documento válido.")
+            st.session_state.consulta_realizada_spc = False
+        else:
+            with st.spinner("Consultando SPC/SERASA... Aguarde."):
+                dados_consulta = consultar_spc_api(doc_limpo, tipo_doc_api)
             
-        dados_formulario_cliente['dados_adicionais'] = dados_adicionais
+            if dados_consulta:
+                if dados_consulta.get('result', {}).get('error') == 'true':
+                    mensagem_erro_api = dados_consulta.get('result', {}).get('message', 'Erro desconhecido retornado pela API.')
+                    st.error(f"Erro na consulta SPC: {mensagem_erro_api}")
+                    st.session_state.dados_spc_json = None
+                elif not dados_consulta.get('result', {}).get('return_object', {}).get('resultado'):
+                    st.warning("A consulta foi realizada, mas não retornou dados de resultado para o documento informado.")
+                    st.session_state.dados_spc_json = None 
+                else:
+                    st.success("Consulta SPC/SERASA realizada com sucesso!")
+                    st.session_state.dados_spc_json = dados_consulta
 
-        st.success("Formulário 'Salvar usuário' submetido!") 
+                    # Tenta popular o formulário principal
+                    popular_formulario_com_spc(st.session_state.dados_spc_json)
 
-        cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True)
+                    markdown_report = gerar_relatorio_spc_markdown(st.session_state.dados_spc_json)
+                    if "## Erro" not in markdown_report: 
+                        pdf_data, pdf_name = markdown_para_pdf_streamlit(markdown_report, f"relatorio_spc_{doc_limpo}.pdf")
+                        if pdf_data:
+                            st.session_state.pdf_bytes_spc = pdf_data
+                            st.session_state.pdf_filename_spc = pdf_name
+                        else:
+                            st.error("Falha ao gerar o arquivo PDF para download.")
+                    else:
+                        st.error("Falha ao gerar o conteúdo do relatório para o PDF.")
+                        with st.expander("Detalhes do Erro na Geração do Relatório (Markdown)", expanded=False):
+                            st.markdown(markdown_report)
+            else:
+                st.session_state.dados_spc_json = None
 
-# --- Seção de Geração de Contrato ---
-st.markdown("---")
-st.markdown(f"""<h3 class="section-title">📄 Gerar Contrato <span class="material-icons tooltip-icon" title="{tooltip_contrato}">article</span></h3>""", unsafe_allow_html=True)
+    if st.session_state.consulta_realizada_spc:
+        if st.session_state.dados_spc_json:
+            if st.session_state.pdf_bytes_spc:
+                st.download_button(
+                    label="📄 Baixar Relatório SPC em PDF",
+                    data=st.session_state.pdf_bytes_spc,
+                    file_name=st.session_state.pdf_filename_spc,
+                    mime="application/pdf",
+                    key="download_spc_pdf_button"
+                )
+            
+            resultado_geral = st.session_state.dados_spc_json.get('result', {}).get('return_object', {}).get('resultado', {})
+            if resultado_geral:
+                restricao_status = "RESTRITO" if resultado_geral.get('restricao', False) else "REGULAR"
+                st.info(f"Situação Geral do Documento (SPC): **{restricao_status}**")
+        elif not submit_button_spc: 
+            st.info("Nenhum dado de consulta SPC para exibir ou houve um erro na última tentativa.")
 
-with st.expander("Configurações do Contrato e Veículos", expanded=True):
-    # --- Dados Gerais do Contrato ---
-    st.subheader("Dados Gerais do Contrato")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.selectbox("Tipo de Contrato:", ["GSM - SATELITAL", "PLANO2"], key="contract_tipo_contrato_select",
-                     index=["GSM - SATELITAL", "PLANO2"].index(st.session_state.contract_tipo_contrato_select))
-        st.text_input("Local da Instalação/Contrato:", key="contract_local_instalacao_input", value=st.session_state.contract_local_instalacao_input)
-        st.date_input("Data de Instalação:", key="contract_data_instalacao_input", value=st.session_state.contract_data_instalacao_input, format="DD/MM/YYYY")
-        st.number_input("Valor de Adesão (R$):", min_value=0.0, key="contract_valor_adesao_input", format="%.2f", value=st.session_state.contract_valor_adesao_input)
-        st.session_state.contract_valor_desinstalacao_input = st.session_state.contract_valor_adesao_input # Conforme original
-        # st.number_input("Valor de Desinstalação (R$):", min_value=0.0, key="contract_valor_desinstalacao_input", format="%.2f", value=st.session_state.contract_valor_desinstalacao_input)
-        st.caption(f"Valor de Desinstalação: {formatar_valor_financeiro_contrato(st.session_state.contract_valor_desinstalacao_input)}")
+    # --- Formulário Principal de Cadastro de Cliente ---
+    with st.container(key="cadastro_cliente_form", border=True): 
+        st.markdown(f"""<h3 class="section-title">Informações Básicas <span class="material-icons tooltip-icon" title="{tooltip_info_basicas}">help_outline</span></h3>""", unsafe_allow_html=True) 
+        # ... (campos do formulário de cadastro usando st.session_state.form_*) ...
+        cols_info1 = st.columns(5) 
+        with cols_info1[0]: 
+            st.checkbox("Ativo", key="form_ativo") 
+        with cols_info1[1]: 
+            st.checkbox("Aviso Inadimplência", value=st.session_state.form_aviso_inadimplencia, key="form_aviso_inadimplencia") 
+        with cols_info1[2]: 
+            tipo_usuario_options = ["Único", "Frotista", "Operador", "Master"] 
+            st.selectbox("Tipo de Usuário:", tipo_usuario_options, index=tipo_usuario_options.index(st.session_state.form_tipo_usuario) if st.session_state.form_tipo_usuario in tipo_usuario_options else 1, key="form_tipo_usuario") 
+        with cols_info1[3]: 
+            pessoa_options = ["Física", "Jurídica"] 
+            default_pessoa = st.session_state.tipo_pessoa_spc_radio_select.split(" ")[1]
+            st.selectbox("Pessoa:", pessoa_options, index=pessoa_options.index(default_pessoa) if default_pessoa in pessoa_options else 0, key="form_pessoa_tipo") 
+        with cols_info1[4]: 
+            st.text_input("Nome:", placeholder="Nome completo ou Razão Social", value=unidecode.unidecode(st.session_state.form_nome), key="form_nome") 
 
+        cols_info2 = st.columns(5) 
+        with cols_info2[0]: 
+            st.text_input("Responsável:", placeholder="Nome do responsável", value=st.session_state.form_responsavel, key="form_responsavel") 
+        with cols_info2[1]: 
+            st.text_input("Endereço:", placeholder="Rua, Número, Bairro, Cidade/UF - CEP", value=st.session_state.form_endereco, key="form_endereco") 
+        with cols_info2[2]: 
+            st.text_input("Tel. Celular:", placeholder="(XX) XXXXX-XXXX", value=st.session_state.form_tel_celular, key="form_tel_celular") 
+        with cols_info2[3]: 
+            st.text_input("Tel. Residencial:", placeholder="(XX) XXXX-XXXX", value=st.session_state.form_tel_residencial, key="form_tel_residencial") 
+        with cols_info2[4]: 
+            st.text_input("Tel. Comercial:", placeholder="(XX) XXXX-XXXX", value=st.session_state.form_tel_comercial, key="form_tel_comercial") 
 
-    with c2:
-        st.text_input("Operadora:", key="contract_operadora_input", value=st.session_state.contract_operadora_input)
-        st.text_input("Forma de Cobrança:", key="contract_forma_cobranca_input", value=st.session_state.contract_forma_cobranca_input)
-        st.text_input("Atendente:", key="contract_atendente_input", value=st.session_state.contract_atendente_input)
-        st.number_input("Valor de Reinstalação (R$):", min_value=0.0, key="contract_valor_reinstalacao_input", format="%.2f", value=st.session_state.contract_valor_reinstalacao_input, disabled=True)
-
-
-    # --- Dados do Seguro (Opcional) ---
-    st.subheader("Dados do Seguro (Opcional)")
-    s1, s2, s3 = st.columns(3)
-    with s1:
-        st.checkbox("Cliente de Seguradora?", key="contract_cliente_seguradora_checkbox", value=st.session_state.contract_cliente_seguradora_checkbox)
-        if st.session_state.contract_cliente_seguradora_checkbox:
-            st.text_input("Nome da Seguradora:", key="contract_seguradora_input", value=st.session_state.contract_seguradora_input)
-            st.number_input("Valor da Cobertura (R$):", min_value=0.0, key="contract_valor_cobertura_input", format="%.2f", value=st.session_state.contract_valor_cobertura_input)
-
-    with s2:
-        st.checkbox("Veículo Financiado?", key="contract_veiculo_financiado_checkbox", value=st.session_state.contract_veiculo_financiado_checkbox)
-        if st.session_state.contract_veiculo_financiado_checkbox:
-            st.text_input("Quantidade de Parcelas:", key="contract_qtd_parcelas_input", value=st.session_state.contract_qtd_parcelas_input)
-    with s3:
-        if st.session_state.contract_veiculo_financiado_checkbox:
-            st.text_input("Valor das Parcelas (R$):", key="contract_valor_parcelas_input", value=st.session_state.contract_valor_parcelas_input)
-            st.date_input("Data da Última Parcela:", key="contract_data_ultima_parcela_input", value=st.session_state.contract_data_ultima_parcela_input)
-
-    # --- Veículos/Placas ---
-    st.subheader("Veículos Contratados")
-
-    if st.button("➕ Adicionar Veículo", key="add_vehicle_button_contract", help="Adiciona um novo veículo ao contrato"):
-        # Adiciona um novo dicionário de placa à lista no session_state
-        # O valor da mensalidade padrão pode vir do cadastro do cliente ou ser um valor fixo
-        default_mensalidade = st.session_state.form_valor_mensalidade if st.session_state.form_valor_mensalidade > 0 else 60.0
-        st.session_state.contract_placas_list.append({
-            "id": len(st.session_state.contract_placas_list) + 1, # ID simples para a chave do widget
-            "placa": "", "marca": "", "modelo": "", 
-            "mensalidade": default_mensalidade,
-            "rastreador": "GSM GPRS", # Padrão
-            "plano_spc": "GSM" # Padrão para o contrato GSM
-        })
-
-    # Exibe os campos para cada placa na lista
-    indices_para_remover = []
-    for i, placa_data in enumerate(st.session_state.contract_placas_list):
-        st.markdown(f"<div class='vehicle-column'>", unsafe_allow_html=True)
-        st.markdown(f"##### Veículo {i+1}")
-        cols_placa = st.columns([3,3,3,1])
-        with cols_placa[0]:
-            placa_data["placa"] = st.text_input(f"Placa", value=placa_data["placa"], key=f"contract_placa_{placa_data['id']}", placeholder="AAA-0000").upper()
-            placa_data["marca"] = st.text_input(f"Marca", value=placa_data["marca"], key=f"contract_marca_{placa_data['id']}")
-        with cols_placa[1]:
-            placa_data["modelo"] = st.text_input(f"Modelo", value=placa_data["modelo"], key=f"contract_modelo_{placa_data['id']}")
-            placa_data["mensalidade"] = st.number_input(f"Mensalidade (R$)", min_value=0.0, value=float(placa_data["mensalidade"]), key=f"contract_mensalidade_placa_{placa_data['id']}", format="%.2f")
-        with cols_placa[2]:
-            if st.session_state.contract_tipo_contrato_select == "PLANO2":
-                placa_data["rastreador"] = "ONEBLOCK COM BLOQUEIO" # Fixo para PLANO2
-                placa_data["plano_spc"] = "PGS"
-                st.text_input(f"Tecnologia", value=placa_data["rastreador"], key=f"contract_rastreador_{placa_data['id']}", disabled=True)
-                st.text_input(f"Plano (Contrato)", value=placa_data["plano_spc"], key=f"contract_plano_spc_{placa_data['id']}", disabled=True)
-            else: # GSM - SATELITAL
-                placa_data["rastreador"] = st.selectbox(f"Tecnologia", ["GSM GPRS", "SATELITAL"], index=["GSM GPRS", "SATELITAL"].index(placa_data["rastreador"]), key=f"contract_rastreador_{placa_data['id']}")
-                placa_data["plano_spc"] = st.selectbox(f"Plano (Contrato)", ["GSM", "SATELITAL", "PGS"], index=["GSM", "SATELITAL", "PGS"].index(placa_data["plano_spc"]), key=f"contract_plano_spc_{placa_data['id']}")
-
-        with cols_placa[3]:
-            st.write("") # Espaçamento
-            st.write("") # Espaçamento
-            if st.button("🗑️", key=f"remove_placa_{placa_data['id']}", help="Remover este veículo"):
-                indices_para_remover.append(i)
-        st.markdown("</div>", unsafe_allow_html=True)
+        cols_info3 = st.columns(3) 
+        with cols_info3[0]: 
+            st.text_input("E-mail:", placeholder="exemplo@dominio.com", value=st.session_state.form_email, key="form_email") 
+        with cols_info3[1]: 
+            st.date_input("Data de nascimento:", value=st.session_state.form_data_nascimento, min_value=date(1900,1,1), format='DD/MM/YYYY', key="form_data_nascimento") 
+        with cols_info3[2]: 
+            cpf_cnpj_label = "CPF:" if st.session_state.form_pessoa_tipo == "Física" else "CNPJ:" 
+            cpf_cnpj_placeholder = "000.000.000-00" if st.session_state.form_pessoa_tipo == "Física" else "00.000.000/0000-00" 
+            st.text_input(cpf_cnpj_label, placeholder=cpf_cnpj_placeholder, value=st.session_state.form_cpf_cnpj, key="form_cpf_cnpj") 
+        
+        # ... (Restante dos campos: Dados de Acesso, Funcionalidades, Financeiro) ...
+        st.markdown("---") 
+        st.markdown(f"""<h3 class="section-title">Dados de Acesso <span class="material-icons tooltip-icon" title="{tooltip_dados_acesso}">vpn_key</span></h3>""", unsafe_allow_html=True) 
+        cols_acesso = st.columns(3) 
+        with cols_acesso[0]: 
+            st.text_input("Login:", placeholder="Login desejado", value=st.session_state.form_login, key="form_login") 
+        with cols_acesso[1]: 
+            st.text_input("Senha:", placeholder="Senha forte", value=''.join(list(filter(str.isdigit, st.session_state.form_cpf_cnpj)))[:6], key="form_senha") 
+        with cols_acesso[2]: 
+            st.text_input("Repita a senha:", placeholder="Confirme a senha", value=''.join(list(filter(str.isdigit, st.session_state.form_cpf_cnpj)))[:6], key="form_confirmar_senha") 
         st.markdown("---")
+        st.markdown(f"""<h3 class="section-title">Dados Adicionais <span class="material-icons tooltip-icon" title="{tooltip_financeiro}">view_list</span></h3>""", unsafe_allow_html=True)
+
+        default_additional_data = {
+            "pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
+    Função: Proprietário
+    Telefone: {st.session_state.form_tel_celular}""",
+        "financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
+
+    E-mail: {st.session_state.form_email}
+
+    Whatsapp para boletos:
+    Telefone: {st.session_state.form_tel_celular}
+    Nome: {st.session_state.form_responsavel}""",    
+        "negociacao": f"""Adesão: {0.00}
+    Mensalidade: {0.00}
+    Desinstalação: {0.00}
+    Reinstalação: 100,00""",    
+        "falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
+    Função: Proprietário
+    Telefone: {st.session_state.form_tel_celular}""",
+        "pessoas_acesso": "."
+        }
+
+        for key, value in default_additional_data.items():
+            cols_additional_data = st.columns([1, 0.05, 1])
+            with cols_additional_data[0]:
+                st.text_area(label="", label_visibility="hidden", value=f"{key.replace('_', ' ').upper()}:", key=f"form_additional_data_{key}", height=150)
+            with cols_additional_data[2]:
+                st.text_area(label="", label_visibility="hidden", value=value, key=f"form_additional_data_{key}_value", height=150)
+
+        st.markdown("---") 
+        st.markdown(f"""<h3 class="section-title"><strong>Funcionalidades</strong><span class="material-icons tooltip-icon" title="{tooltip_funcionalidades}">toggle_on</span></h3>""", unsafe_allow_html=True) 
+        cols_func = st.columns(5) 
+        with cols_func[0]: 
+            st.checkbox("Habilitar Gestão de Manutenção", value=st.session_state.form_gestao_manutencao, key="form_gestao_manutencao") 
+            st.checkbox("Gestão de Controle de Cargas", value=st.session_state.form_gestao_controle_carga, key="form_gestao_controle_carga") 
+        with cols_func[1]: 
+            st.checkbox("Habilitar App Meu Veículo", value=st.session_state.form_meu_veiculo_app, key="form_meu_veiculo_app") 
+            st.checkbox("I-Button Suntech", value=st.session_state.form_i_button_suntech, key="form_i_button_suntech") 
+        with cols_func[2]:
+            st.checkbox("Habilitar Zona de Segurança", value=st.session_state.form_zona_seguranca, key="form_zona_seguranca") 
+            st.checkbox("Habilitar Comandos", value=st.session_state.form_comandos, key="form_comandos") 
+        with cols_func[3]:
+            st.checkbox("V-Button Gestão de motorista", value=st.session_state.form_vbutton_gestao_motorista, key="form_vbutton_gestao_motorista") 
+            st.checkbox("Listagem 'Eventos e Alertas'", value=st.session_state.form_listagem_eventos_alertas, key="form_listagem_eventos_alertas")
+        with cols_func[4]:
+            st.checkbox("Habilitar Cerca Eletrônica", value=st.session_state.form_cerca_eletronica, key="form_cerca_eletronica") 
+            st.checkbox("Listagem 'Falha no Sinal'", value=st.session_state.form_listagem_falha_sinal, key="form_listagem_falha_sinal")
+
+        st.markdown("---") 
+        st.markdown(f"""<h3 class="section-title"><strong>Financeiro</strong><span class="material-icons tooltip-icon" title="{tooltip_dados_adicionais}">monetization_on</span></h3>""", unsafe_allow_html=True) 
+        cols_financeiro = st.columns(3) 
+        with cols_financeiro[0]: 
+            st.number_input("Valor da mensalidade (base):", min_value=0.0, value=st.session_state.form_valor_mensalidade, format="%.2f", step=0.01, key="form_valor_mensalidade", help="Valor base da mensalidade. Será usado por veículo se não especificado individualmente.") 
+        with cols_financeiro[1]: 
+            st.write('')
+            st.number_input("Dia de Vencimento:", min_value=1, max_value=31, value=st.session_state.form_dia_vencimento, step=1, format="%d", key="form_dia_vencimento") 
+        with cols_financeiro[2]: 
+            st.text_area("Observação (Financeiro Cliente):", placeholder="Detalhes financeiros do cliente...", value=f'Senha: {st.session_state.form_senha}. {st.session_state.nome_operador}', key="form_obs_financeiro") 
+
+        st.markdown("<br>", unsafe_allow_html=True) 
+        cols_submit_button_main = st.columns([0.6, 0.4]) 
+        with cols_submit_button_main[1]:
+            submitted_main_form = st.button("✔ Salvar Usuário", type="primary", use_container_width=True)
+
+    if submitted_main_form: 
+        if st.session_state.form_senha != st.session_state.form_confirmar_senha: 
+            st.error("As senhas não correspondem!")
+        else: 
+            dados_formulario_cliente = {key.replace("form_", ""): st.session_state[key] for key in form_keys_defaults if "additional_data" not in key}
+            dados_adicionais = {}
+            for k in st.session_state:
+                k = str(k)
+                if k.startswith("form_additional_data_") and not k.endswith("_value"):
+                    if k.replace("form_additional_data_", "") not in dados_adicionais:
+                        dados_adicionais[k.replace("form_additional_data_", "")] = st.session_state[f"{k}_value"]
+
+                
+            dados_formulario_cliente['dados_adicionais'] = dados_adicionais
+
+            st.success("Formulário 'Salvar usuário' submetido!") 
+
+            cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True)
+
+    # --- Seção de Geração de Contrato ---
+    st.markdown("---")
+    st.markdown(f"""<h3 class="section-title">📄 Gerar Contrato <span class="material-icons tooltip-icon" title="{tooltip_contrato}">article</span></h3>""", unsafe_allow_html=True)
+
+    with st.container(border=True):
+        # --- Dados Gerais do Contrato ---
+        st.subheader("Dados Gerais do Contrato")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.selectbox("Tipo de Contrato:", ["GSM - SATELITAL", "PLANO2"], key="contract_tipo_contrato_select",
+                        index=["GSM - SATELITAL", "PLANO2"].index(st.session_state.contract_tipo_contrato_select))
+            st.text_input("Local da Instalação/Contrato:", key="contract_local_instalacao_input", value=st.session_state.contract_local_instalacao_input)
+            st.date_input("Data de Instalação:", key="contract_data_instalacao_input", value=st.session_state.contract_data_instalacao_input, format="DD/MM/YYYY")
+            st.number_input("Valor de Adesão (R$):", min_value=0.0, key="contract_valor_adesao_input", format="%.2f", value=st.session_state.contract_valor_adesao_input)
+            st.session_state.contract_valor_desinstalacao_input = st.session_state.contract_valor_adesao_input # Conforme original
+            # st.number_input("Valor de Desinstalação (R$):", min_value=0.0, key="contract_valor_desinstalacao_input", format="%.2f", value=st.session_state.contract_valor_desinstalacao_input)
+            st.caption(f"Valor de Desinstalação: {formatar_valor_financeiro_contrato(st.session_state.contract_valor_desinstalacao_input)}")
 
 
-    # Remove os itens marcados (iterando de trás para frente para evitar problemas de índice)
-    for index in sorted(indices_para_remover, reverse=True):
-        st.session_state.contract_placas_list.pop(index)
-        # Força re-execução para atualizar a UI sem os itens removidos
+        with c2:
+            st.text_input("Operadora:", key="contract_operadora_input", value=st.session_state.contract_operadora_input)
+            st.text_input("Forma de Cobrança:", key="contract_forma_cobranca_input", value=st.session_state.contract_forma_cobranca_input)
+            st.text_input("Atendente:", key="contract_atendente_input", value=st.session_state.contract_atendente_input)
+            st.number_input("Valor de Reinstalação (R$):", min_value=0.0, key="contract_valor_reinstalacao_input", format="%.2f", value=st.session_state.contract_valor_reinstalacao_input, disabled=True)
+
+
+        # --- Dados do Seguro (Opcional) ---
+        st.subheader("Dados do Seguro (Opcional)")
+        s1, s2, s3 = st.columns(3)
+        with s1:
+            st.checkbox("Cliente de Seguradora?", key="contract_cliente_seguradora_checkbox", value=st.session_state.contract_cliente_seguradora_checkbox)
+            if st.session_state.contract_cliente_seguradora_checkbox:
+                st.text_input("Nome da Seguradora:", key="contract_seguradora_input", value=st.session_state.contract_seguradora_input)
+                st.number_input("Valor da Cobertura (R$):", min_value=0.0, key="contract_valor_cobertura_input", format="%.2f", value=st.session_state.contract_valor_cobertura_input)
+
+        with s2:
+            st.checkbox("Veículo Financiado?", key="contract_veiculo_financiado_checkbox", value=st.session_state.contract_veiculo_financiado_checkbox)
+            if st.session_state.contract_veiculo_financiado_checkbox:
+                st.text_input("Quantidade de Parcelas:", key="contract_qtd_parcelas_input", value=st.session_state.contract_qtd_parcelas_input)
+        with s3:
+            if st.session_state.contract_veiculo_financiado_checkbox:
+                st.text_input("Valor das Parcelas (R$):", key="contract_valor_parcelas_input", value=st.session_state.contract_valor_parcelas_input)
+                st.date_input("Data da Última Parcela:", key="contract_data_ultima_parcela_input", value=st.session_state.contract_data_ultima_parcela_input)
+
+        # --- Veículos/Placas ---
+        st.subheader("Veículos Contratados")
+
+        if st.button("➕ Adicionar Veículo", key="add_vehicle_button_contract", help="Adiciona um novo veículo ao contrato"):
+            default_mensalidade = st.session_state.form_valor_mensalidade if st.session_state.form_valor_mensalidade > 0 else 60.0
+            st.session_state.contract_placas_list.append({
+                "id": len(st.session_state.contract_placas_list) + 1, # ID simples para a chave do widget
+                "placa": "", "marca": "", "modelo": "", 
+                "mensalidade": default_mensalidade,
+                "rastreador": "GSM GPRS",
+                "plano_spc": "GSM"
+            })
+
+        # Exibe os campos para cada placa na lista
+        indices_para_remover = []
+        for i, placa_data in enumerate(st.session_state.contract_placas_list):
+            st.markdown(f"<div class='vehicle-column'>", unsafe_allow_html=True)
+            st.markdown(f"##### Veículo {i+1}")
+            cols_placa = st.columns([3,3,3,1])
+            with cols_placa[0]:
+                placa_data["placa"] = st.text_input(f"Placa", value=placa_data["placa"], key=f"contract_placa_{placa_data['id']}", placeholder="AAA-0000").upper()
+                placa_data["marca"] = st.text_input(f"Marca", value=placa_data["marca"], key=f"contract_marca_{placa_data['id']}")
+            with cols_placa[1]:
+                placa_data["modelo"] = st.text_input(f"Modelo", value=placa_data["modelo"], key=f"contract_modelo_{placa_data['id']}")
+                placa_data["mensalidade"] = st.number_input(f"Mensalidade (R$)", min_value=0.0, value=float(placa_data["mensalidade"]), key=f"contract_mensalidade_placa_{placa_data['id']}", format="%.2f")
+            with cols_placa[2]:
+                if st.session_state.contract_tipo_contrato_select == "PLANO2":
+                    placa_data["rastreador"] = "ONEBLOCK COM BLOQUEIO" # Fixo para PLANO2
+                    placa_data["plano_spc"] = "PGS"
+                    st.text_input(f"Tecnologia", value=placa_data["rastreador"], key=f"contract_rastreador_{placa_data['id']}", disabled=True)
+                    st.text_input(f"Plano (Contrato)", value=placa_data["plano_spc"], key=f"contract_plano_spc_{placa_data['id']}", disabled=True)
+                else: # GSM - SATELITAL
+                    placa_data["rastreador"] = st.selectbox(f"Tecnologia", ["GSM GPRS", "SATELITAL"], index=["GSM GPRS", "SATELITAL"].index(placa_data["rastreador"]), key=f"contract_rastreador_{placa_data['id']}")
+                    placa_data["plano_spc"] = st.selectbox(f"Plano (Contrato)", ["GSM", "SATELITAL", "PGS"], index=["GSM", "SATELITAL", "PGS"].index(placa_data["plano_spc"]), key=f"contract_plano_spc_{placa_data['id']}")
+
+            with cols_placa[3]:
+                st.write("")
+                st.write("")
+                if st.button("🗑️", key=f"remove_placa_{placa_data['id']}", help="Remover este veículo"):
+                    indices_para_remover.append(i)
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("---")
+
+
+        # Remove os itens marcados (iterando de trás para frente para evitar problemas de índice)
+        for index in sorted(indices_para_remover, reverse=True):
+            st.session_state.contract_placas_list.pop(index)
+            # Força re-execução para atualizar a UI sem os itens removidos
+            st.rerun()
+
+
+        # --- Ações do Contrato ---
+        st.subheader("Ações")
+        cols_actions_docx = st.columns(2)
+        with cols_actions_docx[0]:
+            if st.button("📋 Gerar e Baixar Contrato (.docx)", key="generate_contract_docx_button", help="Gera o contrato em formato DOCX"):
+                if not st.session_state.contract_placas_list:
+                    st.warning("Adicione pelo menos um veículo ao contrato.")
+                else:
+                    with st.spinner("Gerando contrato DOCX..."):
+                        # 1. Coletar todos os dados
+                        dados_contrato_final = preparar_dados_para_template_contrato()
+                        
+                        # 2. Baixar/Carregar template DOCX
+                        template_url_base = "https://api-data-automa-system-production.up.railway.app/download_doc/"
+                        template_name = "template_contrato_plano2.docx" if dados_contrato_final['contract_type'] == "PLANO2" else "template_contrato_GSM.docx"
+                        
+                        doc_bytes = baixar_template_docx(template_url_base + template_name + "?path=docs")
+
+                        if doc_bytes:
+                            doc = docx.Document(io.BytesIO(doc_bytes))
+                            
+                            # 3. Preencher o template
+                            preencher_template_contrato(doc, dados_contrato_final)
+                            
+                            # 4. Salvar em BytesIO para download
+                            bio = io.BytesIO()
+                            doc.save(bio)
+                            st.session_state.contract_pdf_bytes = bio.getvalue() # Usando a mesma variável para DOCX por simplicidade
+                            st.session_state.contract_pdf_filename = f"Contrato_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}_{date.today().strftime('%Y%m%d')}.docx"
+
+                            # 5. Salvar localmente
+                            st.session_state.temp_docx_path = f"temp_contract_{date.today().strftime('%Y%m%d%H%M%S')}.docx"
+                            doc.save(st.session_state.temp_docx_path)
+
+                            st.success("Contrato DOCX gerado!")
+                        else:
+                            st.error("Falha ao baixar o template do contrato.")
+                            
+        with cols_actions_docx[1]:
+            if st.session_state.contract_pdf_bytes and st.session_state.contract_pdf_filename.endswith(".docx"):
+                st.download_button(
+                    label="📥 Baixar Contrato DOCX",
+                    data=st.session_state.contract_pdf_bytes,
+                    file_name=st.session_state.contract_pdf_filename,
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    key="download_contract_docx_final_button",
+                    use_container_width=True
+                )
+        
+        cols_actions_pdf = st.columns(2)
+
+        with cols_actions_pdf[0]:
+            
+            # Geração de PDF (separada para clareza e porque pode falhar)
+            if st.session_state.contract_pdf_bytes and st.session_state.contract_pdf_filename.endswith(".docx"):
+                if st.button("📄 Gerar e Baixar Contrato (.pdf)", key="generate_contract_pdf_button", help="Converte o contrato gerado para PDF (requer Word/LibreOffice)"):
+                    with st.spinner("Convertendo contrato para PDF... (Isso pode levar um momento)"):
+                        try:
+                            # Salvar o DOCX temporariamente para conversão
+                            temp_pdf_path = st.session_state.temp_docx_path.replace(".docx", ".pdf")
+
+                            subprocess.Popen(["libreoffice", "--headless", "--convert-to", "pdf", st.session_state.temp_docx_path])
+                            with open(temp_pdf_path, "rb") as f_pdf:
+                                st.session_state.contract_pdf_bytes_final = f_pdf.read()
+                            
+                            st.session_state.contract_pdf_filename_final = st.session_state.contract_pdf_filename.replace(".docx", ".pdf")
+                            st.success("Contrato PDF gerado!")
+
+                            # # Limpar arquivos temporários
+                            if os.path.exists(st.session_state.temp_docx_path): os.remove(st.session_state.temp_docx_path)
+                            if os.path.exists(temp_pdf_path): os.remove(temp_pdf_path)
+
+                        except Exception as e:
+                            st.error(f"Erro ao converter para PDF: {e}. Verifique se o Microsoft Word ou LibreOffice está instalado e acessível.")
+                            # Limpar arquivos temporários em caso de erro também
+                            if 'temp_docx_path' in locals() and os.path.exists(st.session_state.temp_docx_path): os.remove(st.session_state.temp_docx_path)
+                            if 'temp_pdf_path' in locals() and os.path.exists(temp_pdf_path): os.remove(temp_pdf_path)
+
+        with cols_actions_pdf[1]:
+            
+            if st.session_state.get("contract_pdf_bytes_final") and st.session_state.get("contract_pdf_filename_final", "").endswith(".pdf"):
+                st.download_button(
+                    label="📥 Baixar Contrato PDF",
+                    data=st.session_state.contract_pdf_bytes_final,
+                    file_name=st.session_state.contract_pdf_filename_final,
+                    mime="application/pdf",
+                    key="download_contract_pdf_final_button",
+                    use_container_width=True
+                )
+
+
+        # --- Geração do Manual ---
+        st.subheader("Manual do Aplicativo")
+        m1, m2 = st.columns(2)
+        with m1:
+            st.checkbox("Emitir Manual do APP?", key="contract_emitir_manual_checkbox", value=st.session_state.contract_emitir_manual_checkbox)
+        if st.session_state.contract_emitir_manual_checkbox:
+            with m2:
+                st.selectbox("Tipo de Manual:", ["Carro", "Moto", "Frotista"], key="contract_tipo_manual_select",
+                            index=["Carro", "Moto", "Frotista"].index(st.session_state.contract_tipo_manual_select))
+
+        if st.session_state.contract_emitir_manual_checkbox:
+            if st.button("🛠️ Gerar e Baixar Manual (.pdf)", key="generate_manual_button"):
+                with st.spinner("Gerando manual..."):
+                    # Lógica para gerar manual (similar ao contrato)
+                    # 1. Preparar dados para o manual
+                    dados_manual = {
+                        "_LOGIN_": st.session_state.form_login,
+                        "_SENHA_": st.session_state.form_senha, # Cuidado com a exposição de senhas
+                        # Outros placeholders se houver no manual
+                    }
+                    # 2. Baixar template do manual
+                    template_manual_name = f"Manual App {st.session_state.contract_tipo_manual_select}.docx"
+                    manual_url_base = "https://api-data-automa-system-production.up.railway.app/download_doc/"
+                    
+                    manual_doc_bytes = baixar_template_docx(manual_url_base + template_manual_name.replace(" ", "%20") + "?path=docs")
+
+                    if manual_doc_bytes:
+                        manual_doc = docx.Document(io.BytesIO(manual_doc_bytes))
+                        # 3. Preencher template do manual
+                        preencher_template_manual(manual_doc, dados_manual)
+                        
+                        # 4. Salvar DOCX em BytesIO
+                        manual_bio_docx = io.BytesIO()
+                        manual_doc.save(manual_bio_docx)
+                        manual_docx_bytes_temp = manual_bio_docx.getvalue()
+
+                        # 5. Converter para PDF
+                        try:
+                            temp_manual_docx_path = f"temp_manual_{date.today().strftime('%Y%m%d%H%M%S')}.docx"
+                            temp_manual_pdf_path = temp_manual_docx_path.replace(".docx", ".pdf")
+
+                            with open(temp_manual_docx_path, "wb") as f:
+                                f.write(manual_docx_bytes_temp)
+                            
+                            subprocess.Popen(["libreoffice", "--headless", "--convert-to", "pdf", temp_manual_docx_path])
+
+                            with open(temp_manual_pdf_path, "rb") as f_pdf:
+                                st.session_state.manual_pdf_bytes = f_pdf.read()
+                            
+                            st.session_state.manual_pdf_filename = f"Manual_App_{st.session_state.contract_tipo_manual_select}_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}.pdf"
+                            st.success("Manual PDF gerado!")
+                            
+                            if os.path.exists(temp_manual_docx_path): os.remove(temp_manual_docx_path)
+                            if os.path.exists(temp_manual_pdf_path): os.remove(temp_manual_pdf_path)
+
+                        except Exception as e:
+                            st.error(f"Erro ao converter manual para PDF: {e}")
+                            st.info("Oferecendo download do manual em formato DOCX.")
+                            st.session_state.manual_pdf_bytes = manual_docx_bytes_temp # Salva o DOCX em vez do PDF
+                            st.session_state.manual_pdf_filename = f"Manual_App_{st.session_state.contract_tipo_manual_select}_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}.docx"
+                            if 'temp_manual_docx_path' in locals() and os.path.exists(temp_manual_docx_path): os.remove(temp_manual_docx_path)
+                            if 'temp_manual_pdf_path' in locals() and os.path.exists(temp_manual_pdf_path): os.remove(temp_manual_pdf_path)
+                    else:
+                        st.error(f"Falha ao baixar o template do manual: {template_manual_name}")
+
+
+        if st.session_state.manual_pdf_bytes:
+            mime_type = "application/pdf" if st.session_state.manual_pdf_filename.endswith(".pdf") else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            st.download_button(
+                label=f"📥 Baixar Manual ({'.pdf' if mime_type == 'application/pdf' else '.docx'})",
+                data=st.session_state.manual_pdf_bytes,
+                file_name=st.session_state.manual_pdf_filename,
+                mime=mime_type,
+                key="download_manual_final_button",
+                use_container_width=True
+            )
+
+
+    # --- Footer ---
+    st.markdown("---") 
+    st.caption("© Copyright 2021 - Todos os direitos reservados - Version 3.14.0 (Streamlit Replication)")
+
+    if 'its_first_run' not in st.session_state:
+        st.session_state.its_first_run = True
+
+    if st.session_state.its_first_run:
+        st.session_state.its_first_run = False
         st.rerun()
 
+@st.cache_data
+def get_vehicles_for_client(user_id):
+    """Busca os veículos de um cliente específico."""
+    url = f'{API_BASE_URL}/manager/user/{user_id}/vehicles'
+    logging.info(f"Buscando veículos para o cliente ID: {user_id} na URL: {url}")
+    try:
+        response = requests.get(url, headers=COMMON_API_HEADERS, timeout=30)
+        response.raise_for_status()
+        vehicles = response.json()
+        logging.info(f"Veículos encontrados para o cliente {user_id}: {len(vehicles)}")
+        return vehicles
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"Erro HTTP ao buscar veículos para o cliente {user_id}: {http_err}. Resposta: {http_err.response.text if http_err.response else 'N/A'}")
+    except requests.exceptions.ConnectionError as conn_err:
+        logging.error(f"Erro de conexão ao buscar veículos para o cliente {user_id}: {conn_err}")
+    except requests.exceptions.Timeout as timeout_err:
+        logging.error(f"Timeout ao buscar veículos para o cliente {user_id}: {timeout_err}")
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"Erro geral de requisição ao buscar veículos para o cliente {user_id}: {req_err}")
+    except json.JSONDecodeError as json_err:
+        logging.error(f"Erro ao decodificar JSON da resposta de veículos para o cliente {user_id}: {json_err}. Resposta: {response.text if 'response' in locals() and response else 'N/A'}")
+    return []
 
-    # --- Ações do Contrato ---
-    st.subheader("Ações")
-    cols_actions_docx = st.columns(2)
-    with cols_actions_docx[0]:
-        if st.button("📋 Gerar e Baixar Contrato (.docx)", key="generate_contract_docx_button", help="Gera o contrato em formato DOCX", use_container_width=True, type="primary"):
-            if not st.session_state.contract_placas_list:
-                st.warning("Adicione pelo menos um veículo ao contrato.")
-            else:
-                with st.spinner("Gerando contrato DOCX..."):
-                    # 1. Coletar todos os dados
-                    dados_contrato_final = preparar_dados_para_template_contrato()
-                    
-                    # 2. Baixar/Carregar template DOCX
-                    template_url_base = "https://api-data-automa-system-production.up.railway.app/download_doc/"
-                    template_name = "template_contrato_plano2.docx" if dados_contrato_final['contract_type'] == "PLANO2" else "template_contrato_GSM.docx"
-                    
-                    doc_bytes = baixar_template_docx(template_url_base + template_name + "?path=docs")
+@st.cache_data
+def get_all_vehicle_data(vehicle_id):
+    """Busca todos os dados de um veículo específico."""
+    url = f'{API_BASE_URL}/manager/vehicle/{vehicle_id}'
+    logging.info(f"Buscando dados do veículo ID: {vehicle_id} na URL: {url}")
+    try:
+        response = requests.get(url, headers=COMMON_API_HEADERS, timeout=30)
+        response.raise_for_status()
+        vehicle_data = response.json()
+        logging.info(f"Dados do veículo {vehicle_id} encontrados.")
+        return vehicle_data
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"Erro HTTP ao buscar dados do veículo {vehicle_id}: {http_err}. Resposta: {http_err.response.text if http_err.response else 'N/A'}")
+    except requests.exceptions.ConnectionError as conn_err:
+        logging.error(f"Erro de conexão ao buscar dados do veículo")
+    except json.JSONDecodeError as json_err:
+        logging.error(f"Erro ao decodificar JSON da resposta de dados do veículo {vehicle_id}: {json_err}. Resposta: {response.text if 'response' in locals() and response else 'N/A'}")
 
-                    if doc_bytes:
-                        doc = docx.Document(io.BytesIO(doc_bytes))
-                        
-                        # 3. Preencher o template
-                        preencher_template_contrato(doc, dados_contrato_final)
-                        
-                        # 4. Salvar em BytesIO para download
-                        bio = io.BytesIO()
-                        doc.save(bio)
-                        st.session_state.contract_pdf_bytes = bio.getvalue() # Usando a mesma variável para DOCX por simplicidade
-                        st.session_state.contract_pdf_filename = f"Contrato_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}_{date.today().strftime('%Y%m%d')}.docx"
-
-                        # 5. Salvar localmente
-                        st.session_state.temp_docx_path = f"temp_contract_{date.today().strftime('%Y%m%d%H%M%S')}.docx"
-                        doc.save(st.session_state.temp_docx_path)
-
-                        st.success("Contrato DOCX gerado!")
-                    else:
-                        st.error("Falha ao baixar o template do contrato.")
-                        
-    with cols_actions_docx[1]:
-        if st.session_state.contract_pdf_bytes and st.session_state.contract_pdf_filename.endswith(".docx"):
-            st.download_button(
-                label="📥 Baixar Contrato DOCX",
-                data=st.session_state.contract_pdf_bytes,
-                file_name=st.session_state.contract_pdf_filename,
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key="download_contract_docx_final_button",
-                use_container_width=True
-            )
+def inicio():
+    if "actual_search" in st.session_state and st.session_state.actual_search:
+        st.session_state.search_query_key = st.session_state.actual_search
+        st.session_state.actual_search = ""
     
-    cols_actions_pdf = st.columns(2)
+    if "show_report" in st.session_state and st.session_state.show_report:
+        report_dialog()
+        st.session_state.show_report = False
 
-    with cols_actions_pdf[0]:
+    date_now = datetime.now()
+    greeting = "Bom Dia" if 5 <= date_now.hour < 12 else "Boa Tarde" if 12 <= date_now.hour < 18 else "Boa Noite"
+
+    st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
+
+    # --- Main Content ---
+    st.caption("Navegação: Menu de Opções > Usuários")
+
+    # --- Cabeçalho da Seção de Gerenciamento ---
+    st.markdown('<div class="client-management-header">', unsafe_allow_html=True)
+    left, right = st.columns([0.8, 0.2])
+    with left:
+        st.markdown('<div class="left-side">', unsafe_allow_html=True)
         
-        # Geração de PDF (separada para clareza e porque pode falhar)
-        if st.session_state.contract_pdf_bytes and st.session_state.contract_pdf_filename.endswith(".docx"):
-            if st.button("📄 Gerar e Baixar Contrato (.pdf)", key="generate_contract_pdf_button", help="Converte o contrato gerado para PDF (requer Word/LibreOffice)", use_container_width=True):
-                with st.spinner("Convertendo contrato para PDF... (Isso pode levar um momento)"):
-                    try:
-                        # Salvar o DOCX temporariamente para conversão
-                        temp_pdf_path = st.session_state.temp_docx_path.replace(".docx", ".pdf")
+        # Título
+        st.markdown("""
+            <div class="title-block">
+                <span class="material-icons" style="font-size: 2.5rem;">group</span>
+                <h2><strong>Usuários</strong></h2>
+            </div>
+        """, unsafe_allow_html=True)
 
-                        subprocess.Popen(["libreoffice", "--headless", "--convert-to", "pdf", st.session_state.temp_docx_path])
-                        with open(temp_pdf_path, "rb") as f_pdf:
-                            st.session_state.contract_pdf_bytes_final = f_pdf.read()
-                        
-                        st.session_state.contract_pdf_filename_final = st.session_state.contract_pdf_filename.replace(".docx", ".pdf")
-                        st.success("Contrato PDF gerado!")
-
-                        # # Limpar arquivos temporários
-                        if os.path.exists(st.session_state.temp_docx_path): os.remove(st.session_state.temp_docx_path)
-                        if os.path.exists(temp_pdf_path): os.remove(temp_pdf_path)
-
-                    except Exception as e:
-                        st.error(f"Erro ao converter para PDF: {e}. Verifique se o Microsoft Word ou LibreOffice está instalado e acessível.")
-                        # Limpar arquivos temporários em caso de erro também
-                        if 'temp_docx_path' in locals() and os.path.exists(st.session_state.temp_docx_path): os.remove(st.session_state.temp_docx_path)
-                        if 'temp_pdf_path' in locals() and os.path.exists(temp_pdf_path): os.remove(temp_pdf_path)
-
-    with cols_actions_pdf[1]:
+        # Filtros
+        search_query = st.text_input("Pesquisar...", label_visibility="collapsed", placeholder="🔎 Pesquisar...", key="search_query_key")
         
-        if st.session_state.get("contract_pdf_bytes_final") and st.session_state.get("contract_pdf_filename_final", "").endswith(".pdf"):
-            st.download_button(
-                label="📥 Baixar Contrato PDF",
-                data=st.session_state.contract_pdf_bytes_final,
-                file_name=st.session_state.contract_pdf_filename_final,
-                mime="application/pdf",
-                key="download_contract_pdf_final_button",
-                use_container_width=True
-            )
+        status_options = {"Todos": "", "Ativo": "1", "Inativo": "0"}
+        status_filter = st.selectbox("Status", options=status_options.keys(), label_visibility="collapsed")
+        
+        financ_options = {"Todos": "", "Sim": "1", "Não": "0"}
+        financ_filter = st.selectbox("Aviso Financ.", options=financ_options.keys(), label_visibility="collapsed")
 
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Placeholder para contagem total, será preenchido após a chamada da API
+    total_clients_placeholder = right.empty()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    button_cols = st.columns(5)
 
-    # --- Geração do Manual ---
-    st.subheader("Manual do Aplicativo")
-    m1, m2 = st.columns(2)
-    with m1:
-        st.checkbox("Emitir Manual do APP?", key="contract_emitir_manual_checkbox", value=st.session_state.contract_emitir_manual_checkbox)
-    if st.session_state.contract_emitir_manual_checkbox:
-        with m2:
-            st.selectbox("Tipo de Manual:", ["Carro", "Moto", "Frotista"], key="contract_tipo_manual_select",
-                         index=["Carro", "Moto", "Frotista"].index(st.session_state.contract_tipo_manual_select))
+    with button_cols[0]:
+        if st.button("🔄 Atualizar", key="update_button"):
+            get_client_data.clear() 
+            st.rerun()
+    
+    with button_cols[1]:
+        if st.button("Adicionar Usuário", key="add_user_button"):
+            st.session_state.page_to_show = "cadastro"
+            st.rerun()
+            
+    st.markdown("---")
 
-    if st.session_state.contract_emitir_manual_checkbox:
-        if st.button("🛠️ Gerar e Baixar Manual (.pdf)", key="generate_manual_button", use_container_width=True):
-            with st.spinner("Gerando manual..."):
-                # Lógica para gerar manual (similar ao contrato)
-                # 1. Preparar dados para o manual
-                dados_manual = {
-                    "_LOGIN_": st.session_state.form_login,
-                    "_SENHA_": st.session_state.form_senha, # Cuidado com a exposição de senhas
-                    # Outros placeholders se houver no manual
-                }
-                # 2. Baixar template do manual
-                template_manual_name = f"Manual App {st.session_state.contract_tipo_manual_select}.docx"
-                manual_url_base = "https://api-data-automa-system-production.up.railway.app/download_doc/"
-                
-                manual_doc_bytes = baixar_template_docx(manual_url_base + template_manual_name.replace(" ", "%20") + "?path=docs")
+    # --- Lógica de Paginação ---
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = 1
 
-                if manual_doc_bytes:
-                    manual_doc = docx.Document(io.BytesIO(manual_doc_bytes))
-                    # 3. Preencher template do manual
-                    preencher_template_manual(manual_doc, dados_manual)
-                    
-                    # 4. Salvar DOCX em BytesIO
-                    manual_bio_docx = io.BytesIO()
-                    manual_doc.save(manual_bio_docx)
-                    manual_docx_bytes_temp = manual_bio_docx.getvalue()
-
-                    # 5. Converter para PDF
-                    try:
-                        temp_manual_docx_path = f"temp_manual_{date.today().strftime('%Y%m%d%H%M%S')}.docx"
-                        temp_manual_pdf_path = temp_manual_docx_path.replace(".docx", ".pdf")
-
-                        with open(temp_manual_docx_path, "wb") as f:
-                            f.write(manual_docx_bytes_temp)
-                        
-                        subprocess.Popen(["libreoffice", "--headless", "--convert-to", "pdf", temp_manual_docx_path])
-
-                        with open(temp_manual_pdf_path, "rb") as f_pdf:
-                            st.session_state.manual_pdf_bytes = f_pdf.read()
-                        
-                        st.session_state.manual_pdf_filename = f"Manual_App_{st.session_state.contract_tipo_manual_select}_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}.pdf"
-                        st.success("Manual PDF gerado!")
-                        
-                        if os.path.exists(temp_manual_docx_path): os.remove(temp_manual_docx_path)
-                        if os.path.exists(temp_manual_pdf_path): os.remove(temp_manual_pdf_path)
-
-                    except Exception as e:
-                        st.error(f"Erro ao converter manual para PDF: {e}")
-                        st.info("Oferecendo download do manual em formato DOCX.")
-                        st.session_state.manual_pdf_bytes = manual_docx_bytes_temp # Salva o DOCX em vez do PDF
-                        st.session_state.manual_pdf_filename = f"Manual_App_{st.session_state.contract_tipo_manual_select}_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}.docx"
-                        if 'temp_manual_docx_path' in locals() and os.path.exists(temp_manual_docx_path): os.remove(temp_manual_docx_path)
-                        if 'temp_manual_pdf_path' in locals() and os.path.exists(temp_manual_pdf_path): os.remove(temp_manual_pdf_path)
-                else:
-                    st.error(f"Falha ao baixar o template do manual: {template_manual_name}")
-
-
-    if st.session_state.manual_pdf_bytes:
-        mime_type = "application/pdf" if st.session_state.manual_pdf_filename.endswith(".pdf") else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        st.download_button(
-            label=f"📥 Baixar Manual ({'.pdf' if mime_type == 'application/pdf' else '.docx'})",
-            data=st.session_state.manual_pdf_bytes,
-            file_name=st.session_state.manual_pdf_filename,
-            mime=mime_type,
-            key="download_manual_final_button",
-            use_container_width=True
+    if search_query:
+        st.session_state.current_page = 1
+    
+    if search_query:
+        # --- Chamada da API com filtros ---
+        client_data = get_client_data(
+            page=st.session_state.current_page,
+            search_term=search_query,
+            ativo_filter=1 if status_options.get(status_filter, "") == "Ativo" else 0 if status_options.get(status_filter, "") == "Inativo" else None,
+            financ_filter=1 if financ_options.get(financ_filter, "") == "Sim" else 0 if financ_options.get(financ_filter, "") == "Não" else None
         )
 
+        if client_data:
+            total_items = client_data.get('total_items_length', 0)
+            items_per_page = client_data.get('items_per_page', 50)
+            total_pages = (total_items + items_per_page - 1) // items_per_page # Arredonda para cima
 
-# --- Footer (Existente) ---
-st.markdown("---") 
-st.caption("© Copyright 2021 - Todos os direitos reservados - Version 3.14.0 (Streamlit Replication)")
+            total_clients_placeholder.markdown(f"<div style='text-align: right;'>Total de <strong>{total_items}</strong> usuários</div>", unsafe_allow_html=True)
 
-if 'its_first_run' not in st.session_state:
-    st.session_state.its_first_run = True
+            # Controles de Paginação
+            st.markdown('<div class="pagination-container">', unsafe_allow_html=True)
+            
+            navigation_cols = st.columns([1, 0.5, 0.09, 0.2, 0.4, 0.5, 1])
 
-if st.session_state.its_first_run:
-    st.session_state.its_first_run = False
-    st.rerun()
+            with navigation_cols[1]:
+                
+                # Botão para página anterior
+                if st.button('◀ Anterior', disabled=(st.session_state.current_page <= 1)):
+                    st.session_state.current_page -= 1
+                    st.rerun()
+
+            with navigation_cols[3]:
+                st.write(f"{st.session_state.current_page} de {total_pages}")
+
+            with navigation_cols[5]:
+                # Botão para próxima página
+                if st.button('Próxima ▶', disabled=(st.session_state.current_page >= total_pages)):
+                    st.session_state.current_page += 1
+                    st.rerun()  
+                
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # --- Tabela de Clientes com HTML ---
+            table_html = """
+            <table class="client-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Usuário</th>
+                        <th>CPF/CNPJ</th>
+                        <th>E-mail</th>
+                        <th>Tipo</th>
+                        <th>Telefone Celular</th>
+                        <th>Ativo</th>
+                        <th>Aviso Financ.</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+            
+            # Mapeamento do nível de permissão para o tipo de usuário
+            permission_map = {1: "Único", 2: "Frotista", 3: "Operador", 4: "Master"}
+
+            for i, user in enumerate(client_data.get('data', [])):
+                index = ((st.session_state.current_page - 1) * items_per_page) + i + 1
+                user_id = user.get('id', '')
+                user_name = user.get('name', '---')
+                user_cpf_cnpj = user.get('cpf_cnpj', '---')
+                user_email = user.get('email', '---')
+                user_phone = user.get('phone_number', '---')
+                user_type = permission_map.get(user.get('permission_level'), 'Desconhecido')
+                
+                vehicles = get_vehicles_for_client(user_id)
+                if not vehicles:
+                    vehicles = []
+
+                vehicle_list_str = ','.join([f"{v.get('license_plate', '---')}/{v.get('id', '')}" for v in vehicles])
+
+
+                # Ícone para status 'ativo'
+                is_active = user.get('active', 0)
+                active_icon = '<span class="material-icons active-icon" title="Ativo">check_box</span>' if is_active else '<span class="material-icons inactive-icon" title="Inativo">disabled_by_default</span>'
+                
+                # Ícone para 'aviso financeiro'
+                financial_status = user.get('financial_status', 0)
+                financ_icon = '<span class="material-icons active-icon" title="Com Aviso">check_box</span>' if financial_status else '<span class="material-icons" title="Sem Aviso">check_box_outline_blank</span>'
+
+                # Link para a página de edição (exemplo)
+                edit_link = f"/?user_id={user_id}"
+
+                table_html += f"""
+                <tr>
+                    <td>{index}</td>
+                    <td style="display: flex; justify-content: space-between; align-items: center;">
+                        <a href="{edit_link}" target="_self">{user_name}</a>
+                        <span><a href="https://globalsystem.plataforma.app.br/financeiro/cliente/{user_id}" target="_blank">Acessar Financeiro</a></span>
+                    </td>
+                    <td>{user_cpf_cnpj}</td>
+                    <td>{user_email}</td>
+                    <td>{user_type}</td>
+                    <td>{user_phone}</td>
+                    <td style="text-align: center;">{active_icon}</td>
+                    <td style="text-align: center;">{financ_icon}</td>
+                    <td class="action-icons">
+                        <div class="actions-wrapper">
+                            <a href="https://globalsystem.plataforma.app.br/panel/rastreadores?userId={user_id}" target="_blank" class="tooltip-container">
+                                <span class='material-icons' style='font-size: 1rem; color: black;'>menu</span>
+                                <span class="tooltip">Clique para gerenciar seus rastreadores</span>
+                            </a>
+                            <a href="https://globalsystem.plataforma.app.br/panel/rastreadores/cadastro?userId={user_id}" target="_blank" class="tooltip-container">
+                                <span class='material-icons' style='font-size: 1rem; color: black;'>add</span>
+                                <span class="tooltip">Clique para adicionar um novo rastreador a esse usuário.</span>
+                            </a>
+                            <a href="/?actual_search={search_query}&report_client_name={user_name}&report_client_id={user_id}&all_vehicles={vehicle_list_str}" target="_self" class="tooltip-container">
+                                <span class='material-icons' style='font-size: 1rem; color: black;'>description</span>
+                                <span class="tooltip">Clique para criar um relatório de quilometragem e infrações para esse cliente.</span>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                """
+        
+
+            # --- NOVA SEÇÃO PARA VEÍCULOS ---
+                table_html += f"""
+                <tr>
+                    <td colspan="9" class="details-cell">
+                """
+
+                if vehicles:
+                    # Cria o <details> que permite expandir/recolher
+                    table_html += f"""
+                    <details>
+                        <summary>Ver/Ocultar {len(vehicles)} Veículo(s)</summary>
+                        <table class="vehicle-table">
+                            <thead>
+                                <tr>
+                                    <th>Placa</th>
+                                    <th>Marca</th>
+                                    <th>Modelo</th>
+                                    <th>IMEI</th>
+                                    <th>Fabricante</th>
+                                    <th>Grupo</th>
+                                    <th>Número do Chip</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    """
+                    
+                    # Itera sobre os veículos retornados pela API
+                    for vehicle in vehicles:
+                        all_vehicle_data = get_all_vehicle_data(vehicle.get('id', ''))
+                        placa = vehicle.get('license_plate', '---')
+                        marca = vehicle.get('brand', '---')
+                        modelo = vehicle.get('model', '---')
+                        fabricante = vehicle.get('manufacturer_name', '---')
+                        imei = vehicle.get('imei', '---')
+                        chip_number = vehicle.get('chip_number', '---')
+                        vehicle_id = vehicle.get('id', '---')
+                        
+                        table_html += f"""
+                                <tr>
+                                    <td><a href="https://globalsystem.plataforma.app.br/web/individual/{vehicle_id}">{placa}</a></td>
+                                    <td>{marca}</td>
+                                    <td>{modelo}</td>
+                                    <td><a href="https://globalsystem.plataforma.app.br/panel/rastreadores/cadastro/{vehicle_id}">{imei}</a></td>
+                                    <td>{fabricante}</td>
+                                    <td>{all_vehicle_data.get('groups')}</td>
+                                    <td>{chip_number}</td>
+                                </tr>
+                        """
+
+                    table_html += """
+                            </tbody>
+                        </table>
+                    </details>
+                    """
+                else:
+                    # Se não houver veículos, pode exibir uma mensagem simples
+                    table_html += """
+                        <div style="padding: 5px; font-style: italic; color: #888;">&nbsp;&nbsp;Este cliente não possui veículos cadastrados.</div>
+                    """
+
+                table_html += "</td></tr>"
+                # ###############################################################
+                # ## FIM DA NOVA SEÇÃO                                         ##
+                # ###############################################################
+
+            table_html += "</tbody></table>"
+            st.markdown(table_html.replace('\n', ''), unsafe_allow_html=True)
+        else:
+            st.warning("Não foi possível carregar os dados dos clientes ou não há clientes para os filtros selecionados.")
+    
+    st.markdown("---")
+    st.caption("© Copyright 2021 - Todos os direitos reservados - Version 3.14.0 (Streamlit Replication)")
+
+def main():
+    """Roteador principal da aplicação."""
+    # Inicializa o estado de navegação
+    if "page_to_show" not in st.session_state:
+        st.session_state.page_to_show = "inicio"
+    if "user_to_edit_id" not in st.session_state:
+        st.session_state.user_to_edit_id = None
+    if "loaded_user_id" not in st.session_state:
+        st.session_state.loaded_user_id = None
+
+    # Verifica os parâmetros da URL para navegar para a página de edição
+    query_params = st.query_params
+
+
+    if "go_home" in query_params:
+        st.session_state.page_to_show = "inicio"
+        st.query_params.clear()
+
+    if "report_client_name" in query_params:
+        st.session_state.client_name = query_params.get("report_client_name")
+        st.session_state.client_id = query_params.get("report_client_id")
+        st.session_state.all_vehicles = query_params.get("all_vehicles", "")
+        st.session_state.show_report = True
+        st.session_state.actual_search = query_params.get("actual_search", "")
+
+        st.query_params.clear()
+
+    if "user_id" in query_params:
+        user_id_from_url = query_params.get("user_id")
+        # Evita recarregamentos desnecessários se o ID já estiver sendo editado
+        if st.session_state.user_to_edit_id != user_id_from_url:
+            st.session_state.page_to_show = "cadastro"
+            st.session_state.user_to_edit_id = user_id_from_url
+            st.query_params.clear() # Limpa o parâmetro da URL
+            st.rerun()
+
+    # Renderiza a página com base no estado
+    if st.session_state.page_to_show == "cadastro":
+        # Carrega os dados do usuário se um ID estiver definido e ainda não foi carregado
+        if st.session_state.user_to_edit_id is not None and st.session_state.loaded_user_id != st.session_state.user_to_edit_id:
+            with st.spinner(f"Carregando dados do usuário ID: {st.session_state.user_to_edit_id}..."):
+                user_data = get_user_data_by_id(st.session_state.user_to_edit_id)
+                if user_data:
+                    populate_form_with_user_data(user_data)
+                    st.session_state.loaded_user_id = st.session_state.user_to_edit_id
+                else:
+                    st.error(f"Não foi possível carregar os dados para o usuário ID: {st.session_state.user_to_edit_id}.")
+                    st.session_state.page_to_show = "inicio" # Volta para a lista em caso de erro
+                    st.rerun()
+        
+        page_cadastro_usuario()
+    else:
+        # Garante que o modo de edição seja desativado ao voltar para a home
+        st.session_state.user_to_edit_id = None
+        st.session_state.loaded_user_id = None
+        inicio()
+
+if __name__ == "__main__":
+    main()
