@@ -33,6 +33,31 @@ def apply_design():
         display: none !important;
     }
 
+    /* --- INÍCIO: ESTILO PADRÃO PARA st.container --- */
+    /* Baseado na sua sugestão, estamos estilizando a classe .stVerticalBlock
+       que o Streamlit usa para containers. Isso evita a necessidade de wrappers de markdown. */
+    .stVerticalBlock {
+        background-color: #FFFFFF;
+        border-radius: 10px;
+        padding: 25px;
+        box-shadow: 0 18px 8px rgba(0,0,0,0.2);
+        border: 2px solid #bababa;
+        margin-bottom: 2rem;
+    }
+    /* Remove o estilo de container de elementos que não queremos que pareçam 'cards' */
+    /* Principalmente o container geral da página e os que estão dentro de colunas */
+    .main .stVerticalBlock, .stColumn .stVerticalBlock {
+        background-color: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        margin-bottom: 0; /* Ajuste para não adicionar margem extra */
+    }
+    /* Garante que o container de nível mais alto (depois do header) não tenha a margem padrão */
+    .main > div > .stVerticalBlock {
+        margin-bottom: 0;
+    }
+    /* Fim do estilo padrão para st.container */
     .main .block-container h1 {
         font-family: var(--streamlit-font-family) !important;
         color: var(--section-title-color) !important;
@@ -40,7 +65,9 @@ def apply_design():
         font-size: 2.2em !important;
         margin-bottom: 1.5rem !important;
     }
-    
+    .stMainBlockContainer {
+        background-color: #daeaf0 !important;
+    }
     .client-management-header {
         display: flex; justify-content: space-between; align-items: flex-end; padding: 0 1rem; flex-wrap: wrap;
     }
@@ -56,14 +83,12 @@ def apply_design():
     .client-management-header .stSelectbox {
         min-width: 180px;
     }
-
     .pagination-container {
         display: flex; justify-content: center; align-items: center; padding: 15px 0; font-size: 1rem; gap: 10px;
     }
     .total-clients {
         font-size: 1rem; color: #555; text-align: right; padding-right: 1rem;
     }
-
     .client-table {
         width: 100%; border-collapse: collapse; font-size: 0.9em; color: #555; background-color: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }

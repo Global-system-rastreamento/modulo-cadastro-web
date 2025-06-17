@@ -187,8 +187,12 @@ def preencher_template_contrato(doc, dados_contrato):
 
 def preencher_template_manual(doc, dados_manual):
     """Preenche um template DOCX de manual."""
-    for paragraph in doc.paragraphs:
-        for key, value in dados_manual.items():
-            if key in paragraph.text:
-                paragraph.text = paragraph.text.replace(key, str(value if value is not None else ""))
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        for key, value in dados_manual.items():
+                            if key in run.text:
+                                run.text = run.text.replace(key, str(value if value is not None else ""))
     # Adicionar lógica para tabelas se o manual tiver tabelas com placeholders
