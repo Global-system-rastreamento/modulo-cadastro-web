@@ -813,7 +813,7 @@ Telefone: {st.session_state.form_tel_celular}""",
         col1, col2, col3 = st.columns(3)
         with col1:
             def_bairro_dc = billing_info.get("neighborhood", "") if billing_info else ""
-            st.text_input("Bairro", key="", value=def_bairro_dc)
+            st.text_input("Bairro", key="dados_cobranca_bairro", value=def_bairro_dc)
         with col2:
             def_cidade_dc = billing_info.get("city", "") if billing_info else ""
             st.text_input("Cidade", key="dados_cobranca_cidade", value=def_cidade_dc)
