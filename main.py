@@ -40,7 +40,8 @@ if "dados_cobranca_cep_flag" not in st.session_state:
     st.session_state["dados_cobranca_cep_flag"] = None
 if "added_additional_data" not in st.session_state:
     st.session_state["added_additional_data"] = False
-
+if "user_additional_data" not in st.session_state:
+    st.session_state["user_additional_data"] = []
 # Formulário Principal
 form_keys_defaults = {
     "form_ativo": True, "form_aviso_inadimplencia": False,
@@ -87,28 +88,6 @@ contract_keys_defaults = {
 for key, default_value in contract_keys_defaults.items():
     if key not in st.session_state: st.session_state[key] = default_value
 
-
-if "default_additional_data" not in st.session_state:
-    st.session_state.default_additional_data = {
-"pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
-Função: Proprietário
-Telefone: {st.session_state.form_tel_celular}""",
-"financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
-
-E-mail: {st.session_state.form_email}
-
-Whatsapp para boletos:
-Telefone: {st.session_state.form_tel_celular}
-Nome: {st.session_state.form_responsavel}""",    
-"negociacao": f"""Adesão: {0.00}
-Mensalidade: {0.00}
-Desinstalação: {0.00}
-Reinstalação: 100,00""",    
-"falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
-Função: Proprietário
-Telefone: {st.session_state.form_tel_celular}""",
-"pessoas_acesso": "."
-            }
     
 # --- Fim da Inicialização ---
 
@@ -401,11 +380,36 @@ def page_cadastro_usuario():
             if keys_adc:
                 number_identifier = max([int(k.split("_")[-1]) for k in keys_adc]) + 1
             
-            st.session_state.default_additional_data[f"chave_adicional_{number_identifier}"] = ""
-            st.session_state.added_additional_data = True
+            st.session_state.user_additional_data.append({f"chave_adicional_{number_identifier}": ""})
+
+        st.session_state.default_additional_data = {
+"pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
+Função: Proprietário
+Telefone: {st.session_state.form_tel_celular}""",
+"financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
+
+E-mail: {st.session_state.form_email}
+
+Whatsapp para boletos:
+Telefone: {st.session_state.form_tel_celular}
+Nome: {st.session_state.form_responsavel}""",    
+"negociacao": f"""Adesão: {0.00}
+Mensalidade: {0.00}
+Desinstalação: {0.00}
+Reinstalação: 100,00""",    
+"falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
+Função: Proprietário
+Telefone: {st.session_state.form_tel_celular}""",
+"pessoas_acesso": "."
+            }
+        
+        if st.session_state.user_additional_data:
+            for user_add in st.session_state.user_additional_data:
+                for key, value in user_add.items():
+                    st.session_state.default_additional_data[key] = value
 
         for key, value in st.session_state.default_additional_data.items():
-            if not st.session_state.added_additional_data:
+            if not st.session_state.user_additional_data:
                 cols_additional_data = st.columns([1, 0.05, 1])
             else:
                 cols_additional_data = st.columns([0.9, 0.05, 0.9, 0.15])
@@ -414,20 +418,22 @@ def page_cadastro_usuario():
                 st.text_area(label="", label_visibility="hidden", value=f"{key.replace('_', ' ').upper()}:", key=f"form_additional_data_{key}", height=150)
             with cols_additional_data[2]:
                 st.text_area(label="", label_visibility="hidden", value=value, key=f"form_additional_data_{key}_value", height=150)
-            if st.session_state.added_additional_data and key not in list(st.session_state.default_additional_data.keys())[:5]:
+            if st.session_state.user_additional_data and key not in list(st.session_state.default_additional_data.keys())[:5]:
                 with cols_additional_data[3]:
                     st.write(" ")
                     st.write(" ")
                     st.write(" ")
 
                     def remove_additional_data_row(key):
-                        st.session_state.default_additional_data.pop(key)
+                        for user_add in st.session_state.user_additional_data:
+                            if key in user_add:
+                                st.session_state.user_additional_data.remove(user_add)
 
                         if len(st.session_state.default_additional_data) == 5:
                             st.session_state.added_additional_data = False
 
                     st.button("Remover", key=f"form_remover_additional_data_{key}", on_click=lambda key=key: remove_additional_data_row(key))
-
+    
         _, col_add_dados_adc, _ = st.columns([1.15, 0.5, 1])
         with col_add_dados_adc:
             st.button("Adicionar Dados Adicionais", key="form_adicionar_dados_adicionais", on_click=add_additional_data_row)
