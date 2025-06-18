@@ -401,7 +401,7 @@ Reinstalação: 100,00""",
 "falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
 Função: Proprietário
 Telefone: {st.session_state.form_tel_celular}""",
-"pessoas_acesso": "."
+"pessoas_acesso_liberado": "."
             }
         
         if st.session_state.user_additional_data:
@@ -485,10 +485,22 @@ Telefone: {st.session_state.form_tel_celular}""",
                     k = str(k)
                     if k.startswith("form_additional_data_") and not k.endswith("_value"):
                         if k.replace("form_additional_data_", "") not in dados_adicionais:
-                            dados_adicionais[k.replace("form_additional_data_", "")] = st.session_state[f"{k}_value"]
+                            dados_adicionais[k.replace("form_additional_data_", "").replace("_", ' ').upper()] = st.session_state[f"{k}_value"]
+                
+                order_dados = ["POS VENDAS", "FINANCEIRO", "NEGOCIACAO", "FALHA SINAL", "PESSOAS ACESSO LIBERADO", "*"]    
 
-                    
-                dados_formulario_cliente['dados_adicionais'] = dados_adicionais
+                dados_adicionais_in_order = {}
+                for order in order_dados:
+                    for key, value in dados_adicionais.items():
+                        if order == key:
+                            dados_adicionais_in_order[key] = value
+
+                        elif order == "*":
+                            dados_adicionais_in_order[key] = value
+
+                        
+
+                dados_formulario_cliente['dados_adicionais'] = dados_adicionais_in_order
 
                 st.toast("Formulário 'Cadastro de Usuário' submetido!") 
 
