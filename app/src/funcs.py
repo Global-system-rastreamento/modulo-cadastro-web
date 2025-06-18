@@ -349,9 +349,6 @@ def validate_form_cadastro():
     if not st.session_state.form_tel_celular:
         st.error("O campo 'Telefone' é obrigatório!")
         return False
-    if not st.session_state.form_cep:
-        st.error("O campo 'CEP' é obrigatório!")
-        return False
     if not st.session_state.form_endereco:
         st.error("O campo 'Endereço' é obrigatório!")
         return False
