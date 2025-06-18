@@ -303,7 +303,7 @@ def validate_dados_cobranca():
     if not st.session_state.dados_cobranca_endereco:
         st.error("O campo 'Endereço' é obrigatório.")
         return False
-    if not st.session_state.dados_cobranca_cpf_cnpj:
+    if not st.session_state.dados_cobranca_documento:
         st.error("O campo 'CPF/CNPJ' é obrigatório.")
         return False
     if not len(st.session_state.dados_cobranca_nome.split(" ")) > 1:
