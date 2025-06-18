@@ -58,7 +58,7 @@ def preparar_dados_para_template_contrato():
     data_instalacao_obj = st.session_state.contract_data_instalacao_input
 
     # Dados do Cliente/Contratante (do formulário principal)
-    nome_contratante = st.session_state.form_nome
+    nome_contratante = st.session_state.form_nome.split("- ")[-1]
     cpf_cnpj_contratante = st.session_state.form_cpf_cnpj
     
     # Tenta extrair Rua, Número, Bairro, Cidade, Estado, CEP do endereço completo
