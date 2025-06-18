@@ -16,10 +16,11 @@ import time
 import unidecode
 import os
 import subprocess
+from dotenv import load_dotenv
 import warnings
 
 warnings.filterwarnings("ignore")
-
+load_dotenv()
 
 # --- Configuração da Página e CSS ---
 apply_design()
@@ -609,6 +610,8 @@ Telefone: {st.session_state.form_tel_celular}""",
             if st.button("Salvar"):
                 if not validate_dados_cobranca():
                     st.error("Por favor, preencha todos os campos obrigatórios.")
+                elif not st.session_state.user_to_edit_id:
+                    st.error("Por favor, selecione um usuário para editar. Ou cadastre um primeiro.")
                 else:
                     save_dados_cobranca()
         
