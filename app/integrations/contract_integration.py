@@ -86,7 +86,7 @@ def preparar_dados_para_template_contrato():
 
 
     dados['CORPO'] = {
-        'NOME_CLIENTE_COM_COD': nome_contratante, # Adicionar código se disponível
+        'NOME_CLIENTE_COM_COD': st.session_state.form_nome, # Adicionar código se disponível
         '_DATA_INSTALACAO_EXTENSO_': f"{data_instalacao_obj.day} de {meses_extenso[data_instalacao_obj.month - 1]} de {data_instalacao_obj.year}",
         '_NOME_RESPONSAVEL_': st.session_state.form_responsavel if st.session_state.form_responsavel else nome_contratante,
         '_LOCAL_INSTALACAO_': st.session_state.contract_local_instalacao_input if not st.session_state.contract_local_instalacao_input == "Outro" else st.session_state.contract_local_instalacao_outro_input,
