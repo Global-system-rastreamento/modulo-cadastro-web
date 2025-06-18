@@ -5,10 +5,28 @@ def search_cep(CEP):
     CEP = CEP.replace('.', '').replace('-', '')
 
     try:
-        response = requests.get(f'https://viacep.com.br/ws/{CEP}/json').json()
-
+        tries = 0
+        data = None
+        while True:
+            if tries > 5:
+                break
+            
+            response = requests.get(f'https://viacep.com.br/ws/{CEP}/json')
+            tries += 1
+            if response.status_code == 200:
+                data = response.json()
+                break
+        
+        if data is None:
+            return None
+        
+        if not "erro" in data.keys():
+            return data
+        
+        else:
+            return None
+    
     except requests.exceptions.JSONDecodeError:
         return
-
-    if not 'erro' in response.keys():
-        return response
+    except Exception as e:
+        print(f"Erro ao buscar CEP: {e}")
