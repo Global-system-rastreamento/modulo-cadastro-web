@@ -7,20 +7,15 @@ import base64
 import uuid
 from datetime import datetime, timedelta
 
-_cookie_manager = None
-
 # Função que implementa o padrão Singleton para o CookieManager
 def get_cookie_manager():
-    global _cookie_manager
-    if _cookie_manager is None:
-        _cookie_manager = stx.CookieManager(key=f'CookieManager_{id(st.session_state)}')
-
-    return _cookie_manager
+    if "_cookie_manager" not in st.session_state or st.session_state._cookie_manager is None:
+        st.session_state._cookie_manager = stx.CookieManager(key=f'CookieManager_{id(st.session_state)}')
 
 def verify_cookie_auth():
-    cookie_manager = get_cookie_manager()
-    auth_cookie = cookie_manager.get("auth_token")
-    user_cookie = cookie_manager.get("username")
+    get_cookie_manager()
+    auth_cookie = st.session_state._cookie_manager.get("auth_token")
+    user_cookie = st.session_state._cookie_manager.get("username")
     
     if auth_cookie and user_cookie:
         # Valida o token (aqui você poderia verificar em seu backend se necessário)

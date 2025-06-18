@@ -1182,9 +1182,9 @@ def main():
     query_params = st.query_params
 
     if "logout" in query_params:
-        cookie_manager = get_cookie_manager()
-        cookie_manager.set("auth_token", "", max_age=0, key=f'logout_auth_{int(datetime.now().timestamp())}')
-        cookie_manager.set("username", "", max_age=0, key=f'logout_user_{int(datetime.now().timestamp())}')
+        get_cookie_manager()
+        st.session_state._cookie_manager.set("auth_token", "", max_age=0, key=f'logout_auth_{int(datetime.now().timestamp())}')
+        st.session_state._cookie_manager.set("username", "", max_age=0, key=f'logout_user_{int(datetime.now().timestamp())}')
         st.query_params.clear()
         
         time.sleep(1)
