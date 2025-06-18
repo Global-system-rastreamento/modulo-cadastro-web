@@ -313,10 +313,10 @@ def validate_dados_cobranca():
         st.error("O campo 'Telefone' é obrigatório.")
         return False
     
-    if st.session_state.dados_cobranca_tipo_pessoa == "Pessoa Física (CPF)" and not validar_cpf(st.session_state.dados_cobranca_cpf_cnpj):
+    if st.session_state.dados_cobranca_tipo_pessoa == "Pessoa Física (CPF)" and not validar_cpf(st.session_state.dados_cobranca_documento):
         st.error("O campo 'CPF' deve ser um CPF válido.")
         return False
-    if st.session_state.dados_cobranca_tipo_pessoa == "Pessoa Jurídica (CNPJ)" and not validar_cnpj(st.session_state.dados_cobranca_cpf_cnpj):
+    if st.session_state.dados_cobranca_tipo_pessoa == "Pessoa Jurídica (CNPJ)" and not validar_cnpj(st.session_state.dados_cobranca_documento):
         st.error("O campo 'CNPJ' deve ser um CNPJ válido.")
         return False
     if st.session_state.dados_cobranca_telefone.startswith("+"):
