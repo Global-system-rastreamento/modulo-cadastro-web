@@ -326,7 +326,7 @@ def validate_dados_cobranca():
         st.error("O campo 'Telefone' não deve começar com '55'.")
         return False
     
-    tamanho_tel = len(''.join(list(filter(st.session_state.dados_cobranca_telefone))))
+    tamanho_tel = len(''.join(list(filter(str.isdigit, st.session_state.dados_cobranca_telefone))))
     if tamanho_tel not in [10, 11]:
         st.error("O campo 'Telefone' deve ter 10 ou 11 dígitos.")
         return False
