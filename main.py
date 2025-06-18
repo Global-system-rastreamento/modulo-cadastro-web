@@ -657,7 +657,7 @@ Telefone: {st.session_state.form_tel_celular}""",
 
         with c2:
             st.text_input("Operadora:", key="contract_operadora_input", value="VIVO / SATELITAL")
-            st.text_input("Forma de Cobrança:", key="contract_forma_cobranca_input", value="ASSINATURA")
+            st.text_input("Forma de Cobrança:", key="contract_forma_cobranca_input", value="BOLETO / ASSINATURA")
             st.text_input("Atendente:", key="contract_atendente_input", value=st.session_state.username)
             st.number_input("Valor de Reinstalação (R$):", min_value=0.0, key="contract_valor_reinstalacao_input", value=100.0, format="%.2f", disabled=True)
             if st.session_state.contract_tipo_contrato_select == "PLANO2":
@@ -1205,7 +1205,24 @@ def main():
         st.session_state._cookie_manager.set("username", "", max_age=0, key=f'logout_user_{int(datetime.now().timestamp())}')
         st.query_params.clear()
         
-        time.sleep(1)
+        cookies_deleted = False
+        while not cookies_deleted:
+            try:
+                cookies_loaded = False
+                while not cookies_loaded:
+                    cookies = st.session_state._cookie_manager.get_all(str(datetime.now().timestamp()))
+                    if cookies:
+                        cookies_loaded = True
+                    else:
+                        time.sleep(1)
+
+                print(f"Cookies: {cookies}")
+                if not "auth_token" in cookies and not "username" in cookies:
+                    cookies_deleted = True
+            except Exception as e:
+                print(f"Erro ao deletar cookies: {e}")
+                time.sleep(1)
+
         st.rerun()
 
     if "go_home" in query_params:

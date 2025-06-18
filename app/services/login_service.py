@@ -6,22 +6,36 @@ import requests
 import base64
 import uuid
 from datetime import datetime, timedelta
+from time import sleep
 
 # Função que implementa o padrão Singleton para o CookieManager
 def get_cookie_manager():
     if "_cookie_manager" not in st.session_state or not st.session_state._cookie_manager:
         st.session_state._cookie_manager = stx.CookieManager(key=f'CookieManager_{id(st.session_state)}')
 
+
 def verify_cookie_auth():
     get_cookie_manager()
+
+    with st.spinner("Inicializando sessão..."):
+        cookies_loaded = False
+        contador = 0
+        while not cookies_loaded:
+            contador += 1
+            cookies = st.session_state._cookie_manager.get_all(str(contador))
+            if cookies:
+                cookies_loaded = True
+                contador = 0
+            else:
+                sleep(0.1)
+    
     auth_cookie = st.session_state._cookie_manager.get("auth_token")
     user_cookie = st.session_state._cookie_manager.get("username")
-    
     if auth_cookie and user_cookie:
-        # Valida o token (aqui você poderia verificar em seu backend se necessário)
         st.session_state.logged_in = True
         st.session_state.username = user_cookie
         return True
+    
     return False
 
 def login_screen():
@@ -197,9 +211,21 @@ def login_screen():
                         expiry = datetime.now() + timedelta(hours=5)
                         
                         # Salvar cookies
-                        st.session_state._cookie_manager.set("auth_token", auth_token, expires_at=expiry, key=f'set_auth_{id(st.session_state)}')
-                        st.session_state._cookie_manager.set("username", username, expires_at=expiry, key=f'set_username_{id(st.session_state)}')
-                
+                        while True:
+                            st.session_state._cookie_manager.set("auth_token", auth_token, expires_at=expiry, key=f'set_auth_{datetime.now().timestamp()}')
+                            st.session_state._cookie_manager.set("username", username, expires_at=expiry, key=f'set_username_{datetime.now().timestamp()}')
+
+                            cookies_loaded = False
+                            while not cookies_loaded:
+                                cookies = st.session_state._cookie_manager.get_all(str(datetime.now().timestamp()))
+                                if cookies:
+                                    cookies_loaded = True
+                                else:
+                                    sleep(1)
+                            print("kjdhbs")
+                            if "auth_token" in cookies:
+                                break
+                            
                     # Definir estado para carregamento e recarregar
                     st.session_state.loading = True
                     st.rerun()
