@@ -36,8 +36,6 @@ if 'pdf_filename_spc' not in st.session_state:
     st.session_state.pdf_filename_spc = "relatorio_spc.pdf"
 if 'consulta_realizada_spc' not in st.session_state:
     st.session_state.consulta_realizada_spc = False
-if "nome_operador" not in st.session_state:
-    st.session_state["nome_operador"] = "Juan Bispo"
 if "dados_cobranca_cep_flag" not in st.session_state:
     st.session_state["dados_cobranca_cep_flag"] = None
 if "added_additional_data" not in st.session_state:
@@ -462,7 +460,7 @@ def page_cadastro_usuario():
             st.write('')
             st.number_input("Dia de Vencimento:", min_value=1, max_value=31, step=1, format="%d", key="form_dia_vencimento") 
         with cols_financeiro[2]: 
-            st.text_area("Observação (Financeiro Cliente):", placeholder="Detalhes financeiros do cliente...", value=f'Senha: {st.session_state.form_senha}. {st.session_state.nome_operador}', key="form_obs_financeiro") 
+            st.text_area("Observação (Financeiro Cliente):", placeholder="Detalhes financeiros do cliente...", value=f'Senha: {st.session_state.form_senha}. {st.session_state.username}', key="form_obs_financeiro") 
 
         st.markdown("<br>", unsafe_allow_html=True) 
         cols_submit_button_main = st.columns([0.6, 0.4]) 
@@ -640,7 +638,7 @@ def page_cadastro_usuario():
         with c2:
             st.text_input("Operadora:", key="contract_operadora_input", value="VIVO / SATELITAL")
             st.text_input("Forma de Cobrança:", key="contract_forma_cobranca_input", value="ASSINATURA")
-            st.text_input("Atendente:", key="contract_atendente_input", value=st.session_state.nome_operador)
+            st.text_input("Atendente:", key="contract_atendente_input", value=st.session_state.username)
             st.number_input("Valor de Reinstalação (R$):", min_value=0.0, key="contract_valor_reinstalacao_input", value=100.0, format="%.2f", disabled=True)
             if st.session_state.contract_tipo_contrato_select == "PLANO2":
                 st.number_input("Valor da Cobertura (R$):", min_value=0.0, key="contract_valor_cobertura_input", format="%.2f")
