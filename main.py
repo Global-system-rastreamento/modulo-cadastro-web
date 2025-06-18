@@ -4,18 +4,18 @@ from app.config.design import *
 from app.config.settings import *
 from app.dialogs.report_dialog import report_dialog
 from app.services.cep_search_service import *
+from app.services.document_validator import *
+from app.src.funcs import *
+from app.services.login_service import login_screen, get_cookie_manager
 
 import streamlit as st
 from datetime import date, datetime 
-import requests 
 import io 
 import docx
+import time
 import unidecode
 import os
 import subprocess
-import logging
-from concurrent.futures import ThreadPoolExecutor
-import copy
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -26,28 +26,6 @@ apply_design()
 
 # --- Configurações Gerais ---
 apply_general_settings()
-
-# --- Constantes ---
-
-
-X_TOKEN_API = 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7'
-API_BASE_URL = 'https://api.plataforma.app.br'
-
-COMMON_API_HEADERS = {
-    'accept': 'application/json, text/plain, */*',
-    'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-    'origin': 'https://globalsystem.plataforma.app.br',
-    'priority': 'u=1, i',
-    'referer': 'https://globalsystem.plataforma.app.br/',
-    'sec-ch-ua': '"Not(A:Brand";v="99", "Opera GX";v="118", "Chromium";v="133"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-site',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 OPR/118.0.0.0',
-    'x-token': X_TOKEN_API
-}
 
 # --- Inicialização de Variáveis de Estado ---
 if 'dados_spc_json' not in st.session_state:
@@ -62,6 +40,8 @@ if "nome_operador" not in st.session_state:
     st.session_state["nome_operador"] = "Juan Bispo"
 if "dados_cobranca_cep_flag" not in st.session_state:
     st.session_state["dados_cobranca_cep_flag"] = None
+if "added_additional_data" not in st.session_state:
+    st.session_state["added_additional_data"] = False
 
 # Formulário Principal
 form_keys_defaults = {
@@ -109,9 +89,30 @@ contract_keys_defaults = {
 for key, default_value in contract_keys_defaults.items():
     if key not in st.session_state: st.session_state[key] = default_value
 
-# --- Fim da Inicialização ---
 
-# --- Funções Auxiliares ---
+if "default_additional_data" not in st.session_state:
+    st.session_state.default_additional_data = {
+"pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
+Função: Proprietário
+Telefone: {st.session_state.form_tel_celular}""",
+"financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
+
+E-mail: {st.session_state.form_email}
+
+Whatsapp para boletos:
+Telefone: {st.session_state.form_tel_celular}
+Nome: {st.session_state.form_responsavel}""",    
+"negociacao": f"""Adesão: {0.00}
+Mensalidade: {0.00}
+Desinstalação: {0.00}
+Reinstalação: 100,00""",    
+"falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
+Função: Proprietário
+Telefone: {st.session_state.form_tel_celular}""",
+"pessoas_acesso": "."
+            }
+    
+# --- Fim da Inicialização ---
 
 # --- Função para popular formulário ---
 def popular_formulario_com_spc(dados_spc_json):
@@ -232,210 +233,7 @@ def popular_formulario_com_dados_usuario(user_data):
     st.session_state.form_obs_financeiro = financ_obs
 
     st.success("Dados do usuário carregados. Verifique e edite conforme necessário.")
-
-def cadastrar_cliente(dados_formulario=None, is_cnpj=False, update_data=None, update=False):
-
-    if update:
-        url = f"https://api.plataforma.app.br/user/{update_data.get('id', '')}"
-        method = "PUT"
-    else:
-        url = "https://api.plataforma.app.br/user"
-        method = "POST"
-    
-    if not update_data:
-        niveis = ["Único", "Frotista", "Operador", "Master"]
-        data = {
-                    "sisras_user": {
-                        "additionalData": {
-                            k: v for k, v in dados_formulario['dados_adicionais'].items()
-                        },
-                        "ativo": dados_formulario['ativo'],
-                        "financ": 1 if dados_formulario['aviso_inadimplencia'] else 0,
-                        "nivel": niveis.index(dados_formulario['tipo_usuario']) + 1,
-                        "admin": 0,
-                        "pessoa": 2 if is_cnpj else 1,
-                        "nome": unidecode.unidecode(dados_formulario["nome"]).upper(),
-                        "respon": dados_formulario['responsavel'].upper(),
-                        "endereco": dados_formulario['endereco'].upper(),
-                        "fcel": dados_formulario['tel_celular'],
-                        "fres": dados_formulario['tel_residencial'],
-                        "fcom": dados_formulario['tel_comercial'],
-                        "email": dados_formulario['email'],
-                        "birthDate": dados_formulario['data_nascimento'].strftime('%Y-%m-%d'),
-                        "cnpj": ''.join(list(filter(str.isdigit, dados_formulario["cpf_cnpj"]))),
-                        "login": dados_formulario["login"],
-                        "senha": dados_formulario["senha"],
-                        "financMensalidade": dados_formulario['valor_mensalidade'],
-                        "financDataVencimento": dados_formulario['dia_vencimento'],
-                        "financObs": dados_formulario["obs_financeiro"],
-                        "respfr": 2
-                    }
-                }
-        print(data)
-    else:
-        data = update_data.copy()
-        data["sisras_user"]["additionalData"] = {
-            k: v for k, v in dados_formulario['dados_adicionais'].items()
-        }
-        data["sisras_user"]["ativo"] = dados_formulario['ativo']
-        data["sisras_user"]["financ"] = 1 if dados_formulario['aviso_inadimplencia'] else 0
-        data["sisras_user"]["nivel"] = niveis.index(dados_formulario['tipo_usuario']) + 1
-        data["sisras_user"]["nome"] = unidecode.unidecode(dados_formulario["nome"]).upper()
-        data["sisras_user"]["respon"] = dados_formulario['responsavel'].upper()
-        data["sisras_user"]["endereco"] = dados_formulario['endereco'].upper()
-        data["sisras_user"]["fcel"] = dados_formulario['tel_celular']
-        data["sisras_user"]["fres"] = dados_formulario['tel_residencial']
-        data["sisras_user"]["fcom"] = dados_formulario['tel_comercial']
-        data["sisras_user"]["email"] = dados_formulario['email']
-        data["sisras_user"]["birthDate"] = dados_formulario['data_nascimento'].strftime('%Y-%m-%d')
-        data["sisras_user"]["cnpj"] = ''.join(list(filter(str.isdigit, dados_formulario["cpf_cnpj"])))
-        data["sisras_user"]["login"] = dados_formulario["login"]
-        data["sisras_user"]["senha"] = dados_formulario["senha"]
-        data["sisras_user"]["financMensalidade"] = dados_formulario['valor_mensalidade']
-        data["sisras_user"]["financDataVencimento"] = dados_formulario['dia_vencimento']
-        data["sisras_user"]["financObs"] = dados_formulario["obs_financeiro"]
-        
-    response = requests.request(method, url, headers=COMMON_API_HEADERS, json=data)
-    if response.status_code == 201:
-        st.success("Cliente cadastrado com sucesso!")
-        return response.json()
-    elif response.status_code == 403 and "franchisee" in response.text:
-        st.error("Já existe um usuário com esse LOGIN, tente novamente.")
-    else:
-        st.error("Erro ao cadastrar cliente. Verifique os dados e tente novamente.")
-        st.error(response.json())
-
-def add_funcoes():
-    if st.session_state.user_to_edit_id:
-        features = {
-            "electronic-fence": 1 if st.session_state.form_cerca_eletronica else 0,
-            "meu-veiculo-app": 1 if st.session_state.form_meu_veiculo_app else 0,
-            "maintenances": 1 if st.session_state.form_gestao_manutencao else 0,
-            "vbutton/driver-manager": 1 if st.session_state.form_vbutton_gestao_motorista else 0,
-            "suntech/i-button": 1 if st.session_state.form_i_button_suntech else 0,
-            "security-zone": 1 if st.session_state.form_zona_seguranca else 0,
-            "events-and-alerts": 1 if st.session_state.form_listagem_eventos_alertas else 0,
-            "signal-failure": 1 if st.session_state.form_listagem_falha_sinal else 0,
-            "infringements": 0,
-            "commands": 1 if st.session_state.form_comandos else 0,
-            "cargo-manager": 1 if st.session_state.form_gestao_controle_carga else 0
-        }
-        URLS_PUT = [
-            f"https://api.plataforma.app.br/manager/user/{st.session_state.user_to_edit_id}/feature/{feature}?enable={features[feature]}"
-            for feature in features.keys()
-        ]
-
-        # Função para executar a requisição PUT
-        def send_put_request(url):
-            response = requests.put(url, headers=COMMON_API_HEADERS)
-            if response.status_code != 200:
-                print(f"Erro ao enviar PUT para {url}: {response.text}")
-            return response.status_code, response.text
-
-        # Executa as requisições em paralelo
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            results = list(executor.map(send_put_request, URLS_PUT))
-
-        if all(result[0] == 200 for result in results):
-            st.toast("Todas as mudanças de funcionalidades foram concluídas.")
-        else:
-            st.error("Algumas mudanças de funcionalidades falharam. Por favor, tente novamente.")
-    else:
-        st.error("O cadastro do cliente atual falhou ao ser criado ou não foi carregado corretamente.")
-
-def save_dados_cobranca():
-
-    if st.session_state.user_to_edit_id and st.session_state.user_to_edit_data:
-        url = f"https://api.plataforma.app.br/user/{st.session_state.user_to_edit_id}"
-        payload = {"sisras_user": st.session_state.user_to_edit_data.copy()}
-    
-        if "additional_data" in payload["sisras_user"]:
-            payload["sisras_user"]["additionalData"] = payload["sisras_user"].pop("additional_data")
-
-        if "birth_date" in payload["sisras_user"]:
-            payload["sisras_user"]["birthDate"] = payload["sisras_user"].pop("birth_date")
-
-        payload_copy = copy.deepcopy(payload)
-        for k in payload["sisras_user"].keys():
-            if k not in ["additionalData", "birthDate", "nome", "login", "email"]:
-                del payload_copy["sisras_user"][k]
-
-        payload = copy.deepcopy(payload_copy)
-
-        nfe_issuance_map = {
-            "Emitir NF manualmente": "manual_issuance",
-            "Emitir NF no faturamento": "on_billing",
-            "Emitir NF na liquidação": "on_settlement",
-        }
-        payload["sisras_user"]["additionalData"]["billing_info"] = {
-                            "name": st.session_state.dados_cobranca_nome,
-                            "cep": st.session_state.dados_cobranca_cep,
-                            "cpfcnpj": st.session_state.dados_cobranca_documento,
-                            "phone": st.session_state.dados_cobranca_telefone,
-                            "address": st.session_state.dados_cobranca_endereco,
-                            "address_number": st.session_state.dados_cobranca_numero,
-                            "address_complement": st.session_state.dados_cobranca_complemento if st.session_state.dados_cobranca_complemento else None,
-                            "email": st.session_state.dados_cobranca_email,
-                            "neighborhood": st.session_state.dados_cobranca_bairro,
-                            "city": st.session_state.dados_cobranca_cidade,
-                            "state": st.session_state.dados_cobranca_estado,
-                            "birth_date": st.session_state.dados_cobranca_data_nasc.strftime("%Y-%m-%d") if st.session_state.dados_cobranca_data_nasc else None,
-                            "IBGE_code": st.session_state.dados_cobranca_ibge_code if "dados_cobranca_ibge_code" in st.session_state and st.session_state.dados_cobranca_ibge_code else None,
-                            "observation": st.session_state.dados_cobranca_obs if st.session_state.dados_cobranca_obs else None,
-                            "nfe_issuance_automation_type": nfe_issuance_map[st.session_state.dados_cobranca_nfse] if st.session_state.dados_cobranca_nfse else None,
-                            "nfe_iss_retido": st.session_state.dados_cobranca_iss_retido
-                            }
-        
-        respose = requests.put(url, json=payload, headers=COMMON_API_HEADERS)
-
-        if respose.status_code == 200:
-            st.toast("Dados de cobranças sincronizados!")
-        else:
-            st.error("Houve um erro ao salvar os dados de cobrança no Nexo. Por favor tente novamente.")
-            st.error(respose.text)
-
-    else:
-        st.error("O cadastro do cliente atual falhou ao ser criado ou não foi carregado corretamente.")
-
-@st.cache_data(show_spinner=False)
-def get_client_data(page=1, search_term="", ativo_filter=None, financ_filter=None):
-    """Faz a requisição à API para obter os dados dos clientes."""
-
-    with st.spinner("Carregando dados..."):
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'X-Token': 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7',
-            'Origin': 'https://globalsystem.plataforma.app.br',
-            'Referer': 'https://globalsystem.plataforma.app.br/'
-        }
-        
-        params = {
-            'include_managers': 1,
-            'items_per_page': 50,
-            'paginate': 1,
-            'current_page': page,
-        }
-        
-        if search_term:
-            params['all'] = search_term
-
-        if ativo_filter:
-                params['active'] = ativo_filter
-        if financ_filter:
-                params['financial_alert'] = financ_filter
-        
-        url = "https://api.plataforma.app.br/manager/users"
-        
-        try:
-            response = requests.get(url, headers=headers, params=params, timeout=10)
-            response.raise_for_status()  # Lança um erro para códigos de status ruins (4xx ou 5xx)
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            st.error(f"Erro ao conectar com a API: {e}")
-            return None
-    
+   
 # --- Fim das Funções Auxiliares ---
 
 # --- Tooltips ---
@@ -447,39 +245,6 @@ tooltip_spc = "Consulte a situação do CPF ou CNPJ do cliente nos serviços de 
 tooltip_contrato = "Configure e gere o contrato de prestação de serviços e o manual do aplicativo para o cliente."
 tooltip_dados_cobranca = "Preencha os dados de cobrança do usuário, para emissão de boletos e assinaturas."
 tooltip_dados_adicionais = "Preencha os dados adicionais do Usuário."
-
-def get_user_data_by_id(user_id):
-    """Faz a requisição à API para obter os dados de um único usuário."""
-    if not user_id:
-        return None
-    
-    url = f"https://api.plataforma.app.br/user/{user_id}"
-    
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'X-Token': 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7',
-        'Origin': 'https://globalsystem.plataforma.app.br',
-        'Referer': 'https://globalsystem.plataforma.app.br/'
-    }
-    
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Erro ao buscar dados do usuário: {e}")
-        return None
-
-def format_date_from_api(date_string):
-    """Converte 'YYYY-MM-DDTHH:MM:SS+0000' para um objeto date."""
-    if not date_string:
-        return None
-    try:
-        return datetime.strptime(date_string.split('T')[0], '%Y-%m-%d').date()
-    except (ValueError, IndexError):
-        return None
 
 def page_cadastro_usuario():
     st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
@@ -609,7 +374,7 @@ def page_cadastro_usuario():
         with cols_info3[0]: 
             st.text_input("E-mail:", placeholder="exemplo@dominio.com", key="form_email") 
         with cols_info3[1]: 
-            st.date_input("Data de nascimento:", min_value=date(1900,1,1), format='DD/MM/YYYY', key="form_data_nascimento") 
+            st.date_input("Data de nascimento:", format='DD/MM/YYYY', key="form_data_nascimento") 
         with cols_info3[2]: 
             cpf_cnpj_label = "CPF:" if st.session_state.form_pessoa_tipo == "Física" else "CNPJ:" 
             cpf_cnpj_placeholder = "000.000.000-00" if st.session_state.form_pessoa_tipo == "Física" else "00.000.000/0000-00" 
@@ -631,33 +396,43 @@ def page_cadastro_usuario():
         st.markdown("---")
         st.markdown(f"""<h3 class="section-title">Dados Adicionais <span class="material-icons tooltip-icon" title="{tooltip_financeiro}">view_list</span></h3>""", unsafe_allow_html=True)
 
-        default_additional_data = {
-"pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
-Função: Proprietário
-Telefone: {st.session_state.form_tel_celular}""",
-"financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
+        def add_additional_data_row():
+            number_identifier = 0
+            all_keys = list(st.session_state.default_additional_data.keys())
+            keys_adc = [k for k in all_keys if k.startswith("chave_adicional")]
+            if keys_adc:
+                number_identifier = max([int(k.split("_")[-1]) for k in keys_adc]) + 1
+            
+            st.session_state.default_additional_data[f"chave_adicional_{number_identifier}"] = ""
+            st.session_state.added_additional_data = True
 
-E-mail: {st.session_state.form_email}
+        for key, value in st.session_state.default_additional_data.items():
+            if not st.session_state.added_additional_data:
+                cols_additional_data = st.columns([1, 0.05, 1])
+            else:
+                cols_additional_data = st.columns([0.9, 0.05, 0.9, 0.15])
 
-Whatsapp para boletos:
-Telefone: {st.session_state.form_tel_celular}
-Nome: {st.session_state.form_responsavel}""",    
-"negociacao": f"""Adesão: {0.00}
-Mensalidade: {0.00}
-Desinstalação: {0.00}
-Reinstalação: 100,00""",    
-"falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
-Função: Proprietário
-Telefone: {st.session_state.form_tel_celular}""",
-"pessoas_acesso": "."
-        }
-
-        for key, value in default_additional_data.items():
-            cols_additional_data = st.columns([1, 0.05, 1])
             with cols_additional_data[0]:
                 st.text_area(label="", label_visibility="hidden", value=f"{key.replace('_', ' ').upper()}:", key=f"form_additional_data_{key}", height=150)
             with cols_additional_data[2]:
                 st.text_area(label="", label_visibility="hidden", value=value, key=f"form_additional_data_{key}_value", height=150)
+            if st.session_state.added_additional_data and key not in list(st.session_state.default_additional_data.keys())[:5]:
+                with cols_additional_data[3]:
+                    st.write(" ")
+                    st.write(" ")
+                    st.write(" ")
+
+                    def remove_additional_data_row(key):
+                        st.session_state.default_additional_data.pop(key)
+
+                        if len(st.session_state.default_additional_data) == 5:
+                            st.session_state.added_additional_data = False
+
+                    st.button("Remover", key=f"form_remover_additional_data_{key}", on_click=lambda key=key: remove_additional_data_row(key))
+
+        _, col_add_dados_adc, _ = st.columns([1.15, 0.5, 1])
+        with col_add_dados_adc:
+            st.button("Adicionar Dados Adicionais", key="form_adicionar_dados_adicionais", on_click=add_additional_data_row)
 
         st.markdown("---") 
         st.markdown(f"""<h3 class="section-title"><strong>Funcionalidades</strong><span class="material-icons tooltip-icon" title="{tooltip_funcionalidades}">toggle_on</span></h3>""", unsafe_allow_html=True) 
@@ -697,34 +472,37 @@ Telefone: {st.session_state.form_tel_celular}""",
     if submitted_form: 
         if st.session_state.form_senha != st.session_state.form_confirmar_senha: 
             st.error("As senhas não correspondem!")
-        else:
-            dados_formulario_cliente = {key.replace("form_", ""): st.session_state[key] for key in form_keys_defaults if "additional_data" not in key}
-            dados_adicionais = {}
-            for k in st.session_state:
-                k = str(k)
-                if k.startswith("form_additional_data_") and not k.endswith("_value"):
-                    if k.replace("form_additional_data_", "") not in dados_adicionais:
-                        dados_adicionais[k.replace("form_additional_data_", "")] = st.session_state[f"{k}_value"]
+        else:                
+            if validate_form_cadastro():
+                dados_formulario_cliente = {key.replace("form_", ""): st.session_state[key] for key in form_keys_defaults if "additional_data" not in key}
+                dados_adicionais = {}
+                for k in st.session_state:
+                    k = str(k)
+                    if k.startswith("form_additional_data_") and not k.endswith("_value"):
+                        if k.replace("form_additional_data_", "") not in dados_adicionais:
+                            dados_adicionais[k.replace("form_additional_data_", "")] = st.session_state[f"{k}_value"]
 
+                    
+                dados_formulario_cliente['dados_adicionais'] = dados_adicionais
+
+                st.toast("Formulário 'Cadastro de Usuário' submetido!") 
+
+                if st.session_state.user_to_edit_id and st.session_state.user_to_edit_data:
+                    st.session_state.user_to_edit_data = get_user_data_by_id(st.session_state.user_to_edit_id)
+                    response = cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True, update_data=st.session_state.user_to_edit_data)
+                    if response:
+                        st.session_state.user_to_edit_data = response
+                        add_funcoes()
                 
-            dados_formulario_cliente['dados_adicionais'] = dados_adicionais
-
-            st.toast("Formulário 'Cadastro de Usuário' submetido!") 
-
-            if st.session_state.user_to_edit_id and st.session_state.user_to_edit_data:
-
-                response = cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True, update_data=st.session_state.user_to_edit_data, update=True)
-                if response:
-                    st.session_state.user_to_edit_data = response
-                    add_funcoes()
+                else:
+                    response = cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True)
+                    if response:
+                        st.session_state.user_to_edit_id = response.get("id", "")
+                        st.session_state.user_to_edit_data = response
+                        add_funcoes()
             
             else:
-                response = cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True)
-                if response:
-                    st.session_state.user_to_edit_id = response.get("id", "")
-                    st.session_state.user_to_edit_data = response
-                    add_funcoes()
-            
+                st.toast("Formulário inválido!")
 
     # --- Seção de Geração de Contrato ---
     st.markdown("---")
@@ -738,7 +516,7 @@ Telefone: {st.session_state.form_tel_celular}""",
         # --- Seção de Informações Pessoais ---
         col1, col2 = st.columns([3, 2]) # Colunas para Nome e Telefone
         with col1:
-            def_nome_dc = billing_info.get("name", "") if billing_info else st.session_state.form_nome
+            def_nome_dc = billing_info.get("name", "") if billing_info else st.session_state.form_nome.split("- ")[-1]
             st.text_input("Nome", key="dados_cobranca_nome", value=def_nome_dc)
         with col2:
             def_telefone_dc = billing_info.get("phone", "") if billing_info else st.session_state.form_tel_celular
@@ -823,10 +601,13 @@ Telefone: {st.session_state.form_tel_celular}""",
 
         st.write("")
         btn_cols = st.columns([1, 1, 7])
-
+        
         with btn_cols[0]:
             if st.button("Salvar"):
-                save_dados_cobranca()
+                if not validate_dados_cobranca():
+                    st.error("Por favor, preencha todos os campos obrigatórios.")
+                else:
+                    save_dados_cobranca()
         
         with btn_cols[1]:
             st.radio("ISS Retido", key="dados_cobranca_iss_retido", options=["Sim", "Não"], index=1, horizontal=True)
@@ -1109,52 +890,9 @@ Telefone: {st.session_state.form_tel_celular}""",
         st.session_state.its_first_run = False
         st.rerun()
 
-@st.cache_data(show_spinner=False)
-def get_vehicles_for_client(user_id):
-    """Busca os veículos de um cliente específico."""
-
-    with st.spinner(f"Buscando veículos para o cliente {user_id}..."):
-        url = f'{API_BASE_URL}/manager/user/{user_id}/vehicles'
-        logging.info(f"Buscando veículos para o cliente ID: {user_id} na URL: {url}")
-        try:
-            response = requests.get(url, headers=COMMON_API_HEADERS, timeout=30)
-            response.raise_for_status()
-            vehicles = response.json()
-            logging.info(f"Veículos encontrados para o cliente {user_id}: {len(vehicles)}")
-            return vehicles
-        except requests.exceptions.HTTPError as http_err:
-            logging.error(f"Erro HTTP ao buscar veículos para o cliente {user_id}: {http_err}. Resposta: {http_err.response.text if http_err.response else 'N/A'}")
-        except requests.exceptions.ConnectionError as conn_err:
-            logging.error(f"Erro de conexão ao buscar veículos para o cliente {user_id}: {conn_err}")
-        except requests.exceptions.Timeout as timeout_err:
-            logging.error(f"Timeout ao buscar veículos para o cliente {user_id}: {timeout_err}")
-        except requests.exceptions.RequestException as req_err:
-            logging.error(f"Erro geral de requisição ao buscar veículos para o cliente {user_id}: {req_err}")
-        except json.JSONDecodeError as json_err:
-            logging.error(f"Erro ao decodificar JSON da resposta de veículos para o cliente {user_id}: {json_err}. Resposta: {response.text if 'response' in locals() and response else 'N/A'}")
-        return []
-
-@st.cache_data(show_spinner=False)
-def get_all_vehicle_data(vehicle_id):
-    with st.spinner(f"Buscando dados do veículo. {vehicle_id}.."):
-        
-        """Busca todos os dados de um veículo específico."""
-        url = f'{API_BASE_URL}/manager/vehicle/{vehicle_id}'
-        logging.info(f"Buscando dados do veículo ID: {vehicle_id} na URL: {url}")
-        try:
-            response = requests.get(url, headers=COMMON_API_HEADERS, timeout=30)
-            response.raise_for_status()
-            vehicle_data = response.json()
-            logging.info(f"Dados do veículo {vehicle_id} encontrados.")
-            return vehicle_data
-        except requests.exceptions.HTTPError as http_err:
-            logging.error(f"Erro HTTP ao buscar dados do veículo {vehicle_id}: {http_err}. Resposta: {http_err.response.text if http_err.response else 'N/A'}")
-        except requests.exceptions.ConnectionError as conn_err:
-            logging.error(f"Erro de conexão ao buscar dados do veículo")
-        except json.JSONDecodeError as json_err:
-            logging.error(f"Erro ao decodificar JSON da resposta de dados do veículo {vehicle_id}: {json_err}. Resposta: {response.text if 'response' in locals() and response else 'N/A'}")
 
 def inicio():
+
     if "actual_search" in st.session_state and st.session_state.actual_search:
         st.session_state.search_query_key = st.session_state.actual_search
         st.session_state.actual_search = ""
@@ -1186,8 +924,15 @@ def inicio():
         """, unsafe_allow_html=True)
 
         # Filtros
-        search_query = st.text_input("Pesquisar...", label_visibility="collapsed", placeholder="🔎 Pesquisar...", key="search_query_key")
-        
+        cols = st.columns([6, 1])
+        with cols[0]:
+            search_query = st.text_input("Pesquisar...", label_visibility="collapsed", placeholder="🔎 Pesquisar...", key="search_query_key")
+        with cols[1]:
+            st.write(" ")
+            st.write(" ")
+
+            st.checkbox("Carregar dados de veículos", key="show_vehicles_checkbox")
+
         status_options = {"Todos": "", "Ativo": "1", "Inativo": "0"}
         status_filter = st.selectbox("Status", options=status_options.keys(), label_visibility="collapsed")
         
@@ -1293,11 +1038,14 @@ def inicio():
                 user_phone = user.get('phone_number', '---')
                 user_type = permission_map.get(user.get('permission_level'), 'Desconhecido')
                 
-                vehicles = get_vehicles_for_client(user_id)
-                if not vehicles:
-                    vehicles = []
+                vehicles = None
+                vehicle_list_str = ''
+                if st.session_state.show_vehicles_checkbox:
+                    vehicles = get_vehicles_for_client(user_id)
+                    if not vehicles:
+                        vehicles = []
 
-                vehicle_list_str = ','.join([f"{v.get('license_plate', '---')}/{v.get('id', '')}" for v in vehicles])
+                    vehicle_list_str = ','.join([f"{v.get('license_plate', '---')}/{v.get('id', '')}" for v in vehicles])
 
 
                 # Ícone para status 'ativo'
@@ -1334,7 +1082,7 @@ def inicio():
                                 <span class='material-icons' style='font-size: 1rem; color: black;'>add</span>
                                 <span class="tooltip">Clique para adicionar um novo rastreador a esse usuário.</span>
                             </a>
-                            <a href="/?actual_search={search_query}&report_client_name={user_name}&report_client_id={user_id}&all_vehicles={vehicle_list_str}" target="_self" class="tooltip-container">
+                            <a href="/?actual_search={search_query}&report_client_name={user_name}&report_client_id={user_id}{f'&all_vehicles={vehicle_list_str}' if vehicle_list_str else ''}" target="_self" class="tooltip-container">
                                 <span class='material-icons' style='font-size: 1rem; color: black;'>description</span>
                                 <span class="tooltip">Clique para criar um relatório de quilometragem e infrações para esse cliente.</span>
                             </a>
@@ -1398,7 +1146,7 @@ def inicio():
                         </table>
                     </details>
                     """
-                else:
+                elif vehicles is not None:
                     # Se não houver veículos, pode exibir uma mensagem simples
                     table_html += """
                         <div style="padding: 5px; font-style: italic; color: #888;">&nbsp;&nbsp;Este cliente não possui veículos cadastrados.</div>
@@ -1418,6 +1166,9 @@ def inicio():
     st.caption("© Copyright 2021 - Todos os direitos reservados - Version 3.14.0 (Streamlit Replication)")
 
 def main():
+    if not login_screen():
+        return
+    
     """Roteador principal da aplicação."""
     # Inicializa o estado de navegação
     if "page_to_show" not in st.session_state:
@@ -1432,6 +1183,14 @@ def main():
     # Verifica os parâmetros da URL para navegar para a página de edição
     query_params = st.query_params
 
+    if "logout" in query_params:
+        cookie_manager = get_cookie_manager()
+        cookie_manager.set("auth_token", "", max_age=0, key=f'logout_auth_{int(datetime.now().timestamp())}')
+        cookie_manager.set("username", "", max_age=0, key=f'logout_user_{int(datetime.now().timestamp())}')
+        st.query_params.clear()
+        
+        time.sleep(1)
+        st.rerun()
 
     if "go_home" in query_params:
         st.session_state.page_to_show = "inicio"

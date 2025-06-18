@@ -1,5 +1,6 @@
 import streamlit as st
 from app.services.report_service.report_service import process_report
+from app.src.funcs import get_vehicles_for_client
 
 @st.dialog("Relatório de Quilometragem e Infrações")
 def report_dialog():
@@ -10,6 +11,14 @@ def report_dialog():
     client_id = st.session_state.get("client_id", "ID Desconhecido") # Recupera o ID do cliente
     all_vehicles_dict = {}
 
+    if not st.session_state.get("all_vehicles", ""):
+        vehicles = get_vehicles_for_client(client_id)
+        if not vehicles:
+            vehicles = []
+
+        vehicle_list_str = ','.join([f"{v.get('license_plate', '---')}/{v.get('id', '')}" for v in vehicles])
+        st.session_state["all_vehicles"] = vehicle_list_str
+        
     for vehicle in st.session_state.get("all_vehicles", "").split(","):
         vehicle_data = vehicle.split("/")
         if len(vehicle_data) == 2:

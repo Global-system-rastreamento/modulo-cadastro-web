@@ -387,7 +387,7 @@ a.nav-btn .material-icons {{
             <span class="material-icons">person</span>
             <span>Web</span>
         </a>
-        <a href="#" class="nav-btn btn-logout">
+        <a href="/?logout=true" target="_self" class="nav-btn btn-logout">
             <span>Sair</span>
             <span class="material-icons">exit_to_app</span>
         </a>

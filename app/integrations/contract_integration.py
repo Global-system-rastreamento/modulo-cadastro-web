@@ -66,7 +66,6 @@ def preparar_dados_para_template_contrato():
     # Heurística simples para extrair partes do endereço. Pode precisar de melhorias.
     partes_endereco = [p.strip() for p in endereco_completo.split(',')]
     rua_contrato = partes_endereco[0] if len(partes_endereco) > 0 else endereco_completo
-    numero_contrato = "" # Pode ser parte da rua ou precisar de um campo separado
     bairro_contrato = partes_endereco[1] if len(partes_endereco) > 1 else ""
     cidade_estado_cep = partes_endereco[-1] if len(partes_endereco) > 2 else ""
     
@@ -90,17 +89,17 @@ def preparar_dados_para_template_contrato():
         'NOME_CLIENTE_COM_COD': nome_contratante, # Adicionar código se disponível
         '_DATA_INSTALACAO_EXTENSO_': f"{data_instalacao_obj.day} de {meses_extenso[data_instalacao_obj.month - 1]} de {data_instalacao_obj.year}",
         '_NOME_RESPONSAVEL_': st.session_state.form_responsavel if st.session_state.form_responsavel else nome_contratante,
-        '_LOCAL_INSTALACAO_': st.session_state.contract_local_instalacao_input,
+        '_LOCAL_INSTALACAO_': st.session_state.contract_local_instalacao_input if not st.session_state.contract_local_instalacao_input == "Outro" else st.session_state.contract_local_instalacao_outro_input,
     }
     dados['TABELAS'] = {
         '_NOME_CONTRATANTE_': nome_contratante,
         '_CPF_CNPJ_CONTRATANTE_': cpf_cnpj_contratante,
         '_NOME_RESPONSAVEL_': st.session_state.form_responsavel if st.session_state.form_responsavel else nome_contratante,
-        '_RUA_': rua_contrato,
-        '_BAIRRO_': bairro_contrato,
-        '_N_': numero_contrato, # Ajustar se tiver campo de número separado
-        '_CIDADE_': cidade_contrato,
-        '_ESTADO_': estado_contrato,
+        '_RUA_': st.session_state.dados_cobranca_endereco if not st.session_state.dados_cobranca_complemento else f"{st.session_state.dados_cobranca_endereco}, {st.session_state.dados_cobranca_complemento}",
+        '_BAIRRO_': st.session_state.dados_cobranca_bairro,
+        '_N_': st.session_state.dados_cobranca_numero,
+        '_CIDADE_': st.session_state.dados_cobranca_cidade,
+        '_ESTADO_': st.session_state.dados_cobranca_estado,
         '_CEP_': formatar_cep_contrato(cep_contrato),
         '_FONE_1_': formatar_telefone_contrato(st.session_state.form_tel_celular or st.session_state.form_tel_comercial),
         '_FONE_2_': formatar_telefone_contrato(st.session_state.form_tel_residencial),
