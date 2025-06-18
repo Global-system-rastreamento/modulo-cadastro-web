@@ -508,7 +508,6 @@ Telefone: {st.session_state.form_tel_celular}""",
             else:
                 st.toast("Formulário inválido!")
 
-    # --- Seção de Geração de Contrato ---
     st.markdown("---")
     st.markdown(f"""<h3 class="section-title">🧾 Dados para emissão de cobrança <span class="material-icons tooltip-icon" title="{tooltip_dados_cobranca}">article</span></h3>""", unsafe_allow_html=True)
     
@@ -905,10 +904,7 @@ def inicio():
         report_dialog()
         st.session_state.show_report = False
 
-    date_now = datetime.now()
-    greeting = "Bom Dia" if 5 <= date_now.hour < 12 else "Boa Tarde" if 12 <= date_now.hour < 18 else "Boa Noite"
-
-    st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
+    st.markdown(get_cabecalho(st.session_state.username), unsafe_allow_html=True)
 
     # --- Main Content ---
     st.caption("Navegação: Menu de Opções > Usuários")
@@ -961,6 +957,7 @@ def inicio():
     with button_cols[1]:
         if st.button("Adicionar Usuário", key="add_user_button"):
             st.session_state.page_to_show = "cadastro"
+            st.session_state.user_additional_data = None
             st.rerun()
             
     st.markdown("---")

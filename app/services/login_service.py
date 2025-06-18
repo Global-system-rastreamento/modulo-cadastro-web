@@ -36,7 +36,7 @@ def login_screen():
 
     
     # Inicializar o cookie manager
-    cookie_manager = get_cookie_manager()
+    get_cookie_manager()
     
     # Função para gerar um placeholder de imagem de logo como base64
     def get_logo_base64():
@@ -197,8 +197,8 @@ def login_screen():
                         expiry = datetime.now() + timedelta(hours=5)
                         
                         # Salvar cookies
-                        cookie_manager.set("auth_token", auth_token, expires_at=expiry, key=f'set_auth_{id(st.session_state)}')
-                        cookie_manager.set("username", username, expires_at=expiry, key=f'set_username_{id(st.session_state)}')
+                        st.session_state._cookie_manager.set("auth_token", auth_token, expires_at=expiry, key=f'set_auth_{id(st.session_state)}')
+                        st.session_state._cookie_manager.set("username", username, expires_at=expiry, key=f'set_username_{id(st.session_state)}')
                 
                     # Definir estado para carregamento e recarregar
                     st.session_state.loading = True
