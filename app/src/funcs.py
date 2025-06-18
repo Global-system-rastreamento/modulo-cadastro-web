@@ -367,8 +367,8 @@ def validate_form_cadastro():
     if st.session_state.form_valor_mensalidade == 0.00:
         st.error("O campo 'Valor da Mensalidade' é obrigatório!")
         return False
-    
 
+    return True
 
 @st.cache_data(show_spinner=False)
 def get_vehicles_for_client(user_id):
