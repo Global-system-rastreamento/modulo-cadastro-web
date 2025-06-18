@@ -493,7 +493,7 @@ Telefone: {st.session_state.form_tel_celular}""",
 
                 if st.session_state.user_to_edit_id and st.session_state.user_to_edit_data:
                     st.session_state.user_to_edit_data = get_user_data_by_id(st.session_state.user_to_edit_id)
-                    response = cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True, update_data=st.session_state.user_to_edit_data)
+                    response = atualizar_cadastro(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True, update_data=st.session_state.user_to_edit_data)
                     if response:
                         st.session_state.user_to_edit_data = response
                         add_funcoes()

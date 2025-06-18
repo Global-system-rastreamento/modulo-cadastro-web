@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 # Função que implementa o padrão Singleton para o CookieManager
 def get_cookie_manager():
-    if "_cookie_manager" not in st.session_state or st.session_state._cookie_manager is None:
+    if "_cookie_manager" not in st.session_state or not st.session_state._cookie_manager:
         st.session_state._cookie_manager = stx.CookieManager(key=f'CookieManager_{id(st.session_state)}')
 
 def verify_cookie_auth():
@@ -193,7 +193,7 @@ def login_screen():
                     if remember_me:
                         auth_token = str(uuid.uuid4())
                         
-                        # Definir período de expiração (5 horas no exemplo)
+                        # Definir período de expiração
                         expiry = datetime.now() + timedelta(hours=5)
                         
                         # Salvar cookies
