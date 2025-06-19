@@ -17,17 +17,21 @@ def get_cookie_manager():
 def verify_cookie_auth():
     get_cookie_manager()
 
-    with st.spinner("Inicializando sessão..."):
-        cookies_loaded = False
-        contador = 0
-        while not cookies_loaded:
-            contador += 1
-            cookies = st.session_state._cookie_manager.get_all(str(contador))
-            if cookies:
-                cookies_loaded = True
-                contador = 0
-            else:
-                sleep(0.1)
+    try:
+        
+        with st.spinner("Inicializando sessão..."):
+            cookies_loaded = False
+            contador = 0
+            while not cookies_loaded:
+                contador += 1
+                cookies = st.session_state._cookie_manager.get_all()
+                if cookies:
+                    cookies_loaded = True
+                    contador = 0
+                else:
+                    sleep(0.1)
+    except Exception as e:
+        print(f"Erro ao carregar cookies: {e}")
     
     auth_cookie = st.session_state._cookie_manager.get("auth_token")
     user_cookie = st.session_state._cookie_manager.get("username")
@@ -206,26 +210,36 @@ def login_screen():
                     # Se o usuário marcou "lembrar-me", salvar cookie
                     if remember_me:
                         auth_token = str(uuid.uuid4())
-                        
-                        # Definir período de expiração
                         expiry = datetime.now() + timedelta(hours=5)
                         
-                        # Salvar cookies
-                        while True:
-                            st.session_state._cookie_manager.set("auth_token", auth_token, expires_at=expiry, key=f'set_auth_{datetime.now().timestamp()}')
-                            st.session_state._cookie_manager.set("username", username, expires_at=expiry, key=f'set_username_{datetime.now().timestamp()}')
-
-                            cookies_loaded = False
-                            while not cookies_loaded:
-                                cookies = st.session_state._cookie_manager.get_all(str(datetime.now().timestamp()))
-                                if cookies:
-                                    cookies_loaded = True
-                                else:
-                                    sleep(1)
-                            print("kjdhbs")
-                            if "auth_token" in cookies:
-                                break
+                        try:
+                            # Salvar cookies
+                            st.session_state._cookie_manager.set("auth_token", auth_token, expires_at=expiry)
+                            del st.session_state["set"]
+                            st.session_state._cookie_manager.set("username", username, expires_at=expiry)
+                            del st.session_state["set"]
                             
+                            # Verificar com timeout
+                            max_attempts = 10
+                            attempt = 0
+                            
+                            while attempt < max_attempts:
+                                cookies = st.session_state._cookie_manager.get_all()
+                                print(f"Tentativa {attempt + 1}: {cookies}")
+                                
+                                if cookies and "auth_token" in cookies:
+                                    print("Cookies salvos com sucesso!")
+                                    break
+                                
+                                attempt += 1
+                                sleep(0.5)
+                            
+                            if attempt >= max_attempts:
+                                print("Timeout: cookies não foram carregados")
+                                
+                        except Exception as e:
+                            print(f"Erro ao salvar cookies: {e}")
+
                     # Definir estado para carregamento e recarregar
                     st.session_state.loading = True
                     st.rerun()
