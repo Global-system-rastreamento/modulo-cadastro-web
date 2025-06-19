@@ -1201,28 +1201,55 @@ def main():
 
     if "logout" in query_params:
         get_cookie_manager()
-        st.session_state._cookie_manager.set("auth_token", "", max_age=0, key=f'logout_auth_{int(datetime.now().timestamp())}')
-        st.session_state._cookie_manager.set("username", "", max_age=0, key=f'logout_user_{int(datetime.now().timestamp())}')
-        st.query_params.clear()
         
-        cookies_deleted = False
-        while not cookies_deleted:
-            try:
-                cookies_loaded = False
-                while not cookies_loaded:
-                    cookies = st.session_state._cookie_manager.get_all(str(datetime.now().timestamp()))
+        try:
+            # Deletar cookies
+            st.query_params.clear()
+            st.session_state._cookie_manager.set("auth_token", "", max_age=0)
+            del st.session_state["set"]
+            st.session_state._cookie_manager.set("username", "", max_age=0)
+            del st.session_state["set"]
+            
+            # Verificar se foram deletados (com timeout)
+            max_attempts = 10
+            attempt = 0
+            cookies_deleted = False
+            
+            while attempt < max_attempts and not cookies_deleted:
+                try:
+                    # Usar chave fixa ou sem chave
+                    cookies = st.session_state._cookie_manager.get_all()
+                    print(f"Tentativa {attempt + 1} - Cookies: {cookies}")
+                    
+                    # Verificar se os cookies específicos foram removidos
+                    auth_token = cookies.get("auth_token", "")
+                    username = cookies.get("username", "")
+
                     if cookies:
-                        cookies_loaded = True
+                        if not auth_token and not username:
+                            cookies_deleted = True
+                            print("Cookies deletados com sucesso!")
+                        else:
+                            print(f"Cookies ainda presentes: auth_token='{auth_token}', username='{username}'")
+                            attempt += 1
+                            time.sleep(0.5)
                     else:
-                        time.sleep(1)
+                        print("Nenhum cookie encontrado.")
+                        attempt += 1
+                        time.sleep(0.5)
 
-                print(f"Cookies: {cookies}")
-                if not "auth_token" in cookies and not "username" in cookies:
-                    cookies_deleted = True
-            except Exception as e:
-                print(f"Erro ao deletar cookies: {e}")
-                time.sleep(1)
-
+                except Exception as e:
+                    print(f"Erro ao verificar cookies: {e}")
+                    attempt += 1
+                    time.sleep(0.5)
+            
+            if not cookies_deleted:
+                print("Timeout: não foi possível confirmar remoção dos cookies")
+                # Continuar mesmo assim, pois o logout foi tentado
+                
+        except Exception as e:
+            print(f"Erro ao deletar cookies: {e}")
+        
         st.rerun()
 
     if "go_home" in query_params:
