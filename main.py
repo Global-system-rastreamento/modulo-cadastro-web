@@ -11,6 +11,7 @@ from app.src.funcs import *
 from app.services.login_service import login_screen
 from app.services.google_sheets_service import *
 from app.services.redis_service import *
+from app.src.funcs import *
 
 import streamlit as st
 from datetime import date, datetime 
@@ -558,6 +559,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                     if response:
                         st.session_state.user_to_edit_data = response
                         add_funcoes()
+                        send_single_telegram_message(f"Atualização de cadastro de usuário: {st.session_state.user_to_edit_id} - {st.session_state.form_nome} - {st.session_state.form_cpf_cnpj}, pelo usuario {st.session_state.username}.")
                 
                 else:
                     response = cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True)
@@ -565,6 +567,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                         st.session_state.user_to_edit_id = response.get("id", "")
                         st.session_state.user_to_edit_data = response
                         add_funcoes()
+                        send_single_telegram_message(f"Novo cadastro de usuário: {st.session_state.user_to_edit_id} - {st.session_state.form_nome} - {st.session_state.form_cpf_cnpj}, pelo usuario {st.session_state.username}.")
 
                     else:
                         delete_row_from_sheet("CODIGOS", 2)
@@ -677,6 +680,8 @@ Telefone: {st.session_state.form_tel_celular}""",
                     st.error("Por favor, selecione um usuário para editar. Ou cadastre um primeiro.")
                 else:
                     save_dados_cobranca()
+                    send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get("name", "")}.")
+
         
         with btn_cols[1]:
             st.radio("ISS Retido", key="dados_cobranca_iss_retido", options=["Sim", "Não"], index=1, horizontal=True)
@@ -702,7 +707,6 @@ Telefone: {st.session_state.form_tel_celular}""",
             st.date_input("Data de Instalação:", key="contract_data_instalacao_input", format="DD/MM/YYYY")
             st.number_input("Valor de Adesão (R$):", min_value=0.0, key="contract_valor_adesao_input", format="%.2f")
             st.session_state.contract_valor_desinstalacao_input = st.session_state.contract_valor_adesao_input # Conforme original
-            # st.number_input("Valor de Desinstalação (R$):", min_value=0.0, key="contract_valor_desinstalacao_input", format="%.2f", value=st.session_state.contract_valor_desinstalacao_input)
             st.caption(f"Valor de Desinstalação: {formatar_valor_financeiro_contrato(st.session_state.contract_valor_desinstalacao_input)}")
 
 
