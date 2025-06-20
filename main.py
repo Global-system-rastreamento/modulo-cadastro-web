@@ -27,7 +27,7 @@ import warnings
 warnings.filterwarnings("ignore")
 load_dotenv()
 
-cookies = EncryptedCookieManager(
+st.session_state.cookies = EncryptedCookieManager(
     password=os.environ.get("COOKIE_SECRET", "a_very_secret_password_12345"),
 )
 
@@ -1244,7 +1244,7 @@ def inicio():
     st.caption("© Copyright 2021 - Todos os direitos reservados - Version 3.14.0 (Streamlit Replication)")
 
 def main():
-    if not login_screen(cookies):
+    if not login_screen(st.session_state.cookies):
         return
     
     """Roteador principal da aplicação."""
@@ -1263,10 +1263,10 @@ def main():
 
     if "logout" in query_params:
         try:
-            if cookies.ready():
+            if st.session_state.cookies.ready():
                 # Deletar cookies
-                pop = cookies.pop("auth_token")
-                pop0 = cookies.pop("username")
+                pop = st.session_state.cookies.pop("auth_token")
+                pop0 = st.session_state.cookies.pop("username")
 
                 print("Cookies de autenticação foram removidos.")
                 st.query_params.clear()
