@@ -2,7 +2,11 @@ import gspread
 import time
 from google.oauth2.service_account import Credentials
 from gspread.exceptions import APIError
+from gspread.worksheet import Worksheet
 import os
+import shutil
+
+import streamlit as st
 import dotenv
 
 dotenv_file = dotenv.find_dotenv()
@@ -22,17 +26,34 @@ def connect_to_sheets():
         os.makedirs(creds_dir_path)
     
     creds_path = os.path.join(creds_dir_path, 'gcp_service_account.json')
-
+    
     with open(creds_path, 'w') as f:
         f.write(os.getenv('GOOGLE_SERVICE_ACC_KEY'))
 
     credentials = Credentials.from_service_account_file(creds_path, scopes=SCOPES)
+
+    shutil.rmtree(creds_dir_path)
+
     return gspread.authorize(credentials)
 
-def retry_operation(operation, max_retries=5):
+def retry_operation(operation, *args, **kwargs):
+    if "max_retries" not in kwargs:
+        max_retries = 3
+    else:
+        max_retries = kwargs["max_retries"]
+        del kwargs["max_retries"]
+
     for attempt in range(max_retries):
         try:
-            return operation()
+            if args and kwargs:
+                return operation(*args, **kwargs)
+            elif args:
+                return operation(*args)
+            elif kwargs:
+                return operation(**kwargs)
+            else:
+                return operation()
+        
         except APIError as e:
             if e.response.status_code == 429:
                 wait_time = (2 ** attempt) + 1
@@ -47,53 +68,55 @@ def retry_operation(operation, max_retries=5):
         except Exception as e:
             raise
 
-def update_servicos_planilha(data, single=True):
-    # Conecta ao serviço
-    client = connect_to_sheets()
-    
-    # Abre uma planilha por ID
-    def open_sheet():
-        return client.open_by_key('1XBkgV--XHugeEk6PiScXpoQBMygj5HJi')
-    
-    spreadsheet = retry_operation(open_sheet)
-    
-    # Seleciona uma aba específica
-    def get_worksheet():
-        return spreadsheet.worksheet('CODIGOS').insert_row
-    
-    worksheet = retry_operation(get_worksheet)
-    
-    # Lê todos os dados
-    def read_all():
-        return worksheet.get_all_records()
-    
-    dados = retry_operation(read_all)
-    # Adiciona uma linha nova
-    def append_data():
-        if single:
-            return worksheet.insert_row(data, index=2)
-        
-        return worksheet.insert_row(data, index=2)
-    
-    result = retry_operation(append_data)
+def get_planilha(client, planilha_id):
+    return client.open_by_key(planilha_id)
 
-    return "Operações concluídas com sucesso!"
-
-def get_data():
-    client = connect_to_sheets()
-
-    def get_planilha():
-        return client.open_by_key('1jjHgLRZNyTYwBueaEnGgsOYM1JSHrNoa9HUq6JZK9LM')
+def inserir_linha(planilha, data):
+    def insert_row(planilha, data):
+        return planilha.insert_row(data, index=2)
     
-    spreadsheet = retry_operation(get_planilha)
+    return retry_operation(insert_row, planilha, data)
 
-    def get_worksheets():
-        return spreadsheet.worksheet('CODIGOS').add
-    
-    CODIGOS = retry_operation(get_worksheets)
+def get_worksheets(spreadsheet, nome):
+    def get_worksheet(spreadsheet, nome):
+        return spreadsheet.worksheet(nome)
 
-    return CODIGOS.get_all_records()[0]
+    return retry_operation(get_worksheet, spreadsheet, nome)
 
+def update_planilha(data, nome):
+    try:
+        client = connect_to_sheets()
+
+        spreadsheet = get_planilha(client, os.getenv("PLAN_ID_KEY"))
+
+        CODIGOS = get_worksheets(spreadsheet, nome)
+
+        inserir_linha(CODIGOS, data)
+
+    except Exception as e:
+        st.error(f"Erro ao atualizar planilha: {e}")
+
+    else:
+        st.success("Planilha atualizada com sucesso!")
+
+def get_data_from_sheet(name_sheet):
+    try:
+        client = connect_to_sheets()
+        spreadsheet = get_planilha(client, os.getenv("PLAN_ID_KEY"))
+        worksheet = spreadsheet.worksheet(name_sheet)
+        data = worksheet.get_all_records()
+        return data
+    except Exception as e:
+        st.error(f"Erro ao obter dados da planilha: {e}")
+        return None
+
+def delete_row_from_sheet(name_sheet, row_index):
+    try:
+        client = connect_to_sheets()
+        spreadsheet = get_planilha(client, os.getenv("PLAN_ID_KEY"))
+        worksheet: Worksheet = spreadsheet.worksheet(name_sheet)
+        worksheet.delete_rows(row_index)
+    except Exception as e:
+        st.error(f"Erro ao excluir linha da planilha: {e}")
 if __name__ == '__main__':
-    # update_servicos_planilha()
-    print(get_data())
+    pass

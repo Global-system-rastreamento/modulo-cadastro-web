@@ -7,6 +7,7 @@ import requests
 from concurrent.futures import ThreadPoolExecutor
 import copy
 import json
+from streamlit.components.v1 import html
 
 X_TOKEN_API = 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7'
 API_BASE_URL = 'https://api.plataforma.app.br'
@@ -106,6 +107,7 @@ def cadastrar_cliente(dados_formulario=None, is_cnpj=False):
     response = requests.post(url, headers=COMMON_API_HEADERS, json=data)
     if response.status_code == 201:
         st.success("Cliente cadastrado com sucesso!")
+        st.session_state.populate_form_client_data = True
         return response.json()
     elif response.status_code == 403 and "franchisee" in response.text:
         st.error("Já existe um usuário com esse LOGIN, tente novamente.")
@@ -440,4 +442,13 @@ def get_vehicles_for_client(user_id):
         except json.JSONDecodeError as json_err:
             logging.error(f"Erro ao decodificar JSON da resposta de veículos para o cliente {user_id}: {json_err}. Resposta: {response.text if 'response' in locals() and response else 'N/A'}")
         return []
-    
+
+
+
+def reload_page():
+    js_code = """
+    <script>
+    window.location.reload();
+    </script>
+    """
+    html(js_code, height=0)
