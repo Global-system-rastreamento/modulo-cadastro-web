@@ -1,5 +1,5 @@
 import datetime
-import extra_streamlit_components as stx
+from streamlit_cookies_manager import EncryptedCookieManager
 import streamlit as st
 import os
 import requests
@@ -8,53 +8,33 @@ import uuid
 from datetime import datetime, timedelta
 from time import sleep
 
-# Função que implementa o padrão Singleton para o CookieManager
-def get_cookie_manager():
-    if "_cookie_manager" not in st.session_state or not st.session_state._cookie_manager:
-        st.session_state._cookie_manager = stx.CookieManager(key=f'CookieManager_{id(st.session_state)}')
+def verify_cookie_auth(cookies):
+    if not cookies.ready():
+        # Wait for the component to be ready before interacting with cookies
+        return False
 
-
-def verify_cookie_auth():
-    get_cookie_manager()
-
-    try:
-        
-        with st.spinner("Inicializando sessão..."):
-            cookies_loaded = False
-            contador = 0
-            while not cookies_loaded:
-                contador += 1
-                cookies = st.session_state._cookie_manager.get_all()
-                if cookies:
-                    cookies_loaded = True
-                    contador = 0
-                else:
-                    sleep(0.1)
-    except Exception as e:
-        print(f"Erro ao carregar cookies: {e}")
-    
-    auth_cookie = st.session_state._cookie_manager.get("auth_token")
-    user_cookie = st.session_state._cookie_manager.get("username")
+    auth_cookie = cookies.get("auth_token")
+    user_cookie = cookies.get("username")
     if auth_cookie and user_cookie:
         st.session_state.logged_in = True
         st.session_state.username = user_cookie
         return True
-    
+
     return False
 
-def login_screen():
+def login_screen(cookies):
     """
     Cria uma tela de login moderna com autenticação via API
     Retorna True se o login for bem-sucedido, False caso contrário
     """
     
-    # Verificar cookie antes de mostrar a tela de login
-    if verify_cookie_auth():
-        return True
+    if not cookies.ready():
+        sleep(0.2)
+        st.rerun()
 
-    
-    # Inicializar o cookie manager
-    get_cookie_manager()
+    # Verificar cookie antes de mostrar a tela de login
+    if verify_cookie_auth(cookies):
+        return True
     
     # Função para gerar um placeholder de imagem de logo como base64
     def get_logo_base64():
@@ -213,29 +193,12 @@ def login_screen():
                         expiry = datetime.now() + timedelta(hours=5)
                         
                         try:
+                            print("Salvando cookies...")
                             # Salvar cookies
-                            st.session_state._cookie_manager.set("auth_token", auth_token, expires_at=expiry)
-                            del st.session_state["set"]
-                            st.session_state._cookie_manager.set("username", username, expires_at=expiry)
-                            del st.session_state["set"]
-                            
-                            # Verificar com timeout
-                            max_attempts = 10
-                            attempt = 0
-                            
-                            while attempt < max_attempts:
-                                cookies = st.session_state._cookie_manager.get_all()
-                                print(f"Tentativa {attempt + 1}: {cookies}")
-                                
-                                if cookies and "auth_token" in cookies:
-                                    print("Cookies salvos com sucesso!")
-                                    break
-                                
-                                attempt += 1
-                                sleep(0.5)
-                            
-                            if attempt >= max_attempts:
-                                print("Timeout: cookies não foram carregados")
+                            cookies["auth_token"] = auth_token
+                            cookies["username"] = username
+
+                            print("Cookies de 'Lembrar-me' foram configurados.")
                                 
                         except Exception as e:
                             print(f"Erro ao salvar cookies: {e}")

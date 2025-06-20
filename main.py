@@ -1,29 +1,35 @@
+from app.config.design import *
+apply_design()
+
 from app.integrations.spc_integration import *
 from app.integrations.contract_integration import *
-from app.config.design import *
 from app.config.settings import *
 from app.dialogs.report_dialog import report_dialog
 from app.services.cep_search_service import *
 from app.services.document_validator import *
 from app.src.funcs import *
-from app.services.login_service import login_screen, get_cookie_manager
+from app.services.login_service import login_screen
+from app.services.google_sheets_service import *
+from app.services.redis_service import *
 
 import streamlit as st
 from datetime import date, datetime 
+from dateutil.relativedelta import relativedelta
 import io 
 import docx
-import time
 import unidecode
 import os
 import subprocess
+from streamlit_cookies_manager import EncryptedCookieManager
 from dotenv import load_dotenv
 import warnings
 
 warnings.filterwarnings("ignore")
 load_dotenv()
 
-# --- Configuração da Página e CSS ---
-apply_design()
+cookies = EncryptedCookieManager(
+    password=os.environ.get("COOKIE_SECRET", "a_very_secret_password_12345"),
+)
 
 # --- Configurações Gerais ---
 apply_general_settings()
@@ -90,8 +96,6 @@ for key, default_value in contract_keys_defaults.items():
     if key not in st.session_state: st.session_state[key] = default_value
 
     
-# --- Fim da Inicialização ---
-
 # --- Função para popular formulário ---
 def popular_formulario_com_spc(dados_spc_json):
     if not dados_spc_json or not dados_spc_json.get('result', {}).get('return_object', {}):
@@ -225,6 +229,10 @@ tooltip_dados_cobranca = "Preencha os dados de cobrança do usuário, para emiss
 tooltip_dados_adicionais = "Preencha os dados adicionais do Usuário."
 
 def page_cadastro_usuario():
+    if "populate_form_client_data" in st.session_state and st.session_state.populate_form_client_data:
+        popular_formulario_com_dados_usuario(st.session_state.user_to_edit_data)
+        st.session_state.populate_form_client_data = False
+
     st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
 
     st.caption("Navegação: Menu de Opções > Usuários > Adicionando Usuário") 
@@ -479,7 +487,58 @@ Telefone: {st.session_state.form_tel_celular}""",
             st.error("As senhas não correspondem!")
         else:                
             if validate_form_cadastro():
+                data_on_sheet = get_data_from_sheet("CODIGOS")
+                if not data_on_sheet:
+                    st.error("Não foi possível obter os dados do Google Sheets. Por favor, tente novamente mais tarde.")
+                    return
+                
+                else:
+                  
+                  if not st.session_state.user_to_edit_id and not st.session_state.user_to_edit_data:
+                    with safe_redis_lock("save_data_to_sheet"):
+                        with st.spinner("Salvando dados no Google Sheets..."):
+
+                            first_row = data_on_sheet[0]
+
+                            data_str = first_row.get("DATA", "")
+                            name_client = first_row.get("CLIENTE", "")
+
+                            if not data_str or not name_client:
+                                st.error("Não foi possível parsear os dados do Google Sheets. Por favor, tente novamente mais tarde.")
+                                return
+                            
+                            try:
+                                data_obj = datetime.strptime(data_str, "%d/%m/%Y")
+                            except ValueError:
+                                st.error("A data no Google Sheets não está no formato correto. Por favor, verifique e tente novamente.")
+                                return
+                            
+                            new_date = data_obj + relativedelta(days=1)
+
+                            new_date_str = new_date.strftime("%d/%m/%Y")
+
+                            cod = name_client.split("-")[0]
+
+                            if not cod.isdigit():
+                                st.error("O código do cliente não é um número válido. Verifique a planilha e tente novamente.")
+                                return
+                            
+                            new_cod = str(int(cod) + 1)
+
+                            new_name_client = f"{new_cod}- {st.session_state.form_nome}"
+
+                            st.session_state.form_nome_modified = new_name_client
+
+                            data = [new_date_str, new_name_client, st.session_state.username.upper()]
+
+                            update_planilha(data, "CODIGOS")
+
+
                 dados_formulario_cliente = {key.replace("form_", ""): st.session_state[key] for key in form_keys_defaults if "additional_data" not in key}
+
+                if "form_nome_modified" in st.session_state and st.session_state.form_nome_modified:
+                    dados_formulario_cliente["nome"] = st.session_state.form_nome_modified
+
                 dados_adicionais = {}
                 for k in st.session_state:
                     k = str(k)
@@ -517,6 +576,9 @@ Telefone: {st.session_state.form_tel_celular}""",
                         st.session_state.user_to_edit_id = response.get("id", "")
                         st.session_state.user_to_edit_data = response
                         add_funcoes()
+
+                    else:
+                        delete_row_from_sheet("CODIGOS", 2)
             
             else:
                 st.toast("Formulário inválido!")
@@ -1182,7 +1244,7 @@ def inicio():
     st.caption("© Copyright 2021 - Todos os direitos reservados - Version 3.14.0 (Streamlit Replication)")
 
 def main():
-    if not login_screen():
+    if not login_screen(cookies):
         return
     
     """Roteador principal da aplicação."""
@@ -1200,57 +1262,18 @@ def main():
     query_params = st.query_params
 
     if "logout" in query_params:
-        get_cookie_manager()
-        
         try:
-            # Deletar cookies
-            st.query_params.clear()
-            st.session_state._cookie_manager.set("auth_token", "", max_age=0)
-            del st.session_state["set"]
-            st.session_state._cookie_manager.set("username", "", max_age=0)
-            del st.session_state["set"]
-            
-            # Verificar se foram deletados (com timeout)
-            max_attempts = 10
-            attempt = 0
-            cookies_deleted = False
-            
-            while attempt < max_attempts and not cookies_deleted:
-                try:
-                    # Usar chave fixa ou sem chave
-                    cookies = st.session_state._cookie_manager.get_all()
-                    print(f"Tentativa {attempt + 1} - Cookies: {cookies}")
-                    
-                    # Verificar se os cookies específicos foram removidos
-                    auth_token = cookies.get("auth_token", "")
-                    username = cookies.get("username", "")
+            if cookies.ready():
+                # Deletar cookies
+                pop = cookies.pop("auth_token")
+                pop0 = cookies.pop("username")
 
-                    if cookies:
-                        if not auth_token and not username:
-                            cookies_deleted = True
-                            print("Cookies deletados com sucesso!")
-                        else:
-                            print(f"Cookies ainda presentes: auth_token='{auth_token}', username='{username}'")
-                            attempt += 1
-                            time.sleep(0.5)
-                    else:
-                        print("Nenhum cookie encontrado.")
-                        attempt += 1
-                        time.sleep(0.5)
-
-                except Exception as e:
-                    print(f"Erro ao verificar cookies: {e}")
-                    attempt += 1
-                    time.sleep(0.5)
-            
-            if not cookies_deleted:
-                print("Timeout: não foi possível confirmar remoção dos cookies")
-                # Continuar mesmo assim, pois o logout foi tentado
+                print("Cookies de autenticação foram removidos.")
+                st.query_params.clear()
                 
         except Exception as e:
             print(f"Erro ao deletar cookies: {e}")
         
-        st.rerun()
 
     if "go_home" in query_params:
         st.session_state.page_to_show = "inicio"
