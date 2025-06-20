@@ -506,13 +506,13 @@ Telefone: {st.session_state.form_tel_celular}""",
 
                             new_date_str = new_date.strftime("%d/%m/%Y")
 
-                            cod = name_client.split("-")[0]
+                            older_cod = name_client.split("-")[0]
 
-                            if not cod.isdigit():
+                            if not older_cod.isdigit():
                                 st.error("O código do cliente não é um número válido. Verifique a planilha e tente novamente.")
                                 return
                             
-                            new_cod = str(int(cod) + 1)
+                            new_cod = str(int(older_cod) + 1)
 
                             new_name_client = f"{new_cod}- {st.session_state.form_nome}"
 
