@@ -7,10 +7,10 @@ import base64
 import uuid
 from datetime import datetime, timedelta
 from time import sleep
+import streamlit_js_eval
 
 def verify_cookie_auth(cookies):
     if not cookies.ready():
-        # Wait for the component to be ready before interacting with cookies
         return False
 
     auth_cookie = cookies.get("auth_token")
@@ -19,6 +19,9 @@ def verify_cookie_auth(cookies):
         st.session_state.logged_in = True
         st.session_state.username = user_cookie
         return True
+
+    if "logged_out" in st.session_state and st.session_state.logged_out:
+        streamlit_js_eval.streamlit_js_eval(js_expressions="parent.window.location.reload()")
 
     return False
 
