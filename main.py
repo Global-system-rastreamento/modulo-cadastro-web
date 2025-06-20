@@ -13,6 +13,7 @@ from app.services.google_sheets_service import *
 from app.services.redis_service import *
 
 import streamlit as st
+import streamlit_js_eval
 from datetime import date, datetime 
 from dateutil.relativedelta import relativedelta
 import io 
@@ -1268,12 +1269,15 @@ def main():
                 pop = st.session_state.cookies.pop("auth_token")
                 pop0 = st.session_state.cookies.pop("username")
 
-                print("Cookies de autenticação foram removidos.")
+                print(f"Cookies de autenticação: {st.session_state.cookies}")
                 st.query_params.clear()
-                
+
         except Exception as e:
             print(f"Erro ao deletar cookies: {e}")
         
+        else:
+            st.session_state.logged_out = True
+            st.rerun()
 
     if "go_home" in query_params:
         st.session_state.page_to_show = "inicio"
