@@ -13,9 +13,8 @@ from app.services.google_sheets_service import *
 from app.services.redis_service import *
 
 import streamlit as st
-import streamlit_js_eval
 from datetime import date, datetime 
-from dateutil.relativedelta import relativedelta
+import pytz
 import io 
 import docx
 import unidecode
@@ -501,20 +500,9 @@ Telefone: {st.session_state.form_tel_celular}""",
 
                             first_row = data_on_sheet[0]
 
-                            data_str = first_row.get("DATA", "")
                             name_client = first_row.get("CLIENTE", "")
 
-                            if not data_str or not name_client:
-                                st.error("Não foi possível parsear os dados do Google Sheets. Por favor, tente novamente mais tarde.")
-                                return
-                            
-                            try:
-                                data_obj = datetime.strptime(data_str, "%d/%m/%Y")
-                            except ValueError:
-                                st.error("A data no Google Sheets não está no formato correto. Por favor, verifique e tente novamente.")
-                                return
-                            
-                            new_date = data_obj + relativedelta(days=1)
+                            new_date = datetime.now(pytz.timezone("America/Sao_Paulo")).date()
 
                             new_date_str = new_date.strftime("%d/%m/%Y")
 
