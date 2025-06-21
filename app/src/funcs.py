@@ -205,6 +205,7 @@ def save_dados_cobranca():
 
         if respose.status_code == 200:
             st.toast("Dados de cobranças sincronizados!")
+            return respose.json()
         else:
             st.error("Houve um erro ao salvar os dados de cobrança no Nexo. Por favor tente novamente.")
             st.error(respose.text)
