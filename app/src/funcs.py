@@ -43,8 +43,11 @@ def atualizar_cadastro(dados_formulario, is_cnpj=False, update_data=None):
     data["sisras_user"]["additionalData"] = {
         k: v for k, v in dados_formulario['dados_adicionais'].items()
     }
+    if "additional_data" in update_data and "billing_info" in update_data["additional_data"] and update_data["additional_data"]["billing_info"]:
+        data["sisras_user"]["additionalData"]["billing_info"] = update_data["additional_data"]["billing_info"]
+
     data["sisras_user"]["admin"] = 0
-    data["sisras_user"]["ativo"] = dados_formulario['ativo']
+    data["sisras_user"]["ativo"] = 1 if dados_formulario['ativo'] else 0
     data["sisras_user"]["birthDate"] = dados_formulario['data_nascimento'].strftime('%Y-%m-%d') if dados_formulario['data_nascimento'] else ""
     data["sisras_user"]["cnpj"] = ''.join(list(filter(str.isdigit, dados_formulario["cpf_cnpj"])))
     data["sisras_user"]["email"] = dados_formulario['email']
@@ -460,10 +463,10 @@ def send_single_telegram_message(message_part: str, chat_id: str) -> bool:
 
     for attempt in range(max_retries + 1):
         try:
-            response = requests.post(url, json=payload, timeout=20)
+            response = requests.post(url, json=payload, timeout=300)
 
             if response.status_code == 200:
-                logging.debug(f"Parte da mensagem enviada com sucesso para {chat_id}.")
+                logging.info(f"Parte da mensagem enviada com sucesso para {chat_id}.")
                 return True
             else:
                 logging.error(f"Falha ao enviar parte da mensagem para {chat_id}. Status: {response.status_code}, Resposta: {response.text}. Tentativa {attempt + 1} de {max_retries + 1}.")
