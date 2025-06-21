@@ -691,8 +691,9 @@ Telefone: {st.session_state.form_tel_celular}""",
                 elif not st.session_state.user_to_edit_id:
                     st.error("Por favor, selecione um usuário para editar. Ou cadastre um primeiro.")
                 else:
-                    save_dados_cobranca()
-                    send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get('name', '')}.", "-4875656287")
+                    response = save_dados_cobranca()
+                    if response:
+                        send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get('name', '')}.", "-4875656287")
 
         
         with btn_cols[1]:
