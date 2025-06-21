@@ -38,32 +38,33 @@ def atualizar_cadastro(dados_formulario, is_cnpj=False, update_data=None):
 
     niveis = ["Único", "Frotista", "Operador", "Master"]
 
-    data = update_data.copy()
+    data = {"sisras_user": {}}
 
     data["sisras_user"]["additionalData"] = {
         k: v for k, v in dados_formulario['dados_adicionais'].items()
     }
-
+    data["sisras_user"]["admin"] = 0
     data["sisras_user"]["ativo"] = dados_formulario['ativo']
+    data["sisras_user"]["birthDate"] = dados_formulario['data_nascimento'].strftime('%Y-%m-%d') if dados_formulario['data_nascimento'] else ""
+    data["sisras_user"]["cnpj"] = ''.join(list(filter(str.isdigit, dados_formulario["cpf_cnpj"])))
+    data["sisras_user"]["email"] = dados_formulario['email']
+    data["sisras_user"]["endereco"] = dados_formulario['endereco'].upper()
+    data["sisras_user"]["fcel"] = dados_formulario['tel_celular']
+    data["sisras_user"]["fcom"] = dados_formulario['tel_comercial']
     data["sisras_user"]["financ"] = 1 if dados_formulario['aviso_inadimplencia'] else 0
+    data["sisras_user"]["financDataVencimento"] = dados_formulario['dia_vencimento']
+    data["sisras_user"]["financMensalidade"] = dados_formulario['valor_mensalidade']
+    data["sisras_user"]["financObs"] = dados_formulario["obs_financeiro"]
+    data["sisras_user"]["fres"] = dados_formulario['tel_residencial']
+    data["sisras_user"]["login"] = dados_formulario["login"]
     data["sisras_user"]["nivel"] = niveis.index(dados_formulario['tipo_usuario']) + 1
     data["sisras_user"]["nome"] = unidecode.unidecode(dados_formulario["nome"]).upper()
     data["sisras_user"]["respon"] = dados_formulario['responsavel'].upper()
-    data["sisras_user"]["endereco"] = dados_formulario['endereco'].upper()
-    data["sisras_user"]["fcel"] = dados_formulario['tel_celular']
-    data["sisras_user"]["fres"] = dados_formulario['tel_residencial']
-    data["sisras_user"]["fcom"] = dados_formulario['tel_comercial']
-    data["sisras_user"]["email"] = dados_formulario['email']
-    data["sisras_user"]["birthDate"] = dados_formulario['data_nascimento'].strftime('%Y-%m-%d')
-    data["sisras_user"]["cnpj"] = ''.join(list(filter(str.isdigit, dados_formulario["cpf_cnpj"])))
-    data["sisras_user"]["login"] = dados_formulario["login"]
     data["sisras_user"]["senha"] = dados_formulario["senha"]
-    data["sisras_user"]["financMensalidade"] = dados_formulario['valor_mensalidade']
-    data["sisras_user"]["financDataVencimento"] = dados_formulario['dia_vencimento']
-    data["sisras_user"]["financObs"] = dados_formulario["obs_financeiro"]
     data["sisras_user"]["pessoa"] = 2 if is_cnpj else 1
     data["sisras_user"]["respfr"] = 2
     
+    print(json.dumps(data, indent=4))
     response = requests.put(url, headers=COMMON_API_HEADERS, json=data)
     if response.status_code == 200:
         st.success("Cadastro atualizado com sucesso!")
