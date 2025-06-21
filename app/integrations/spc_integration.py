@@ -100,9 +100,9 @@ def consultar_spc_api(documento: str, tipo_documento: str):
             timeout=30 
         )
         response.raise_for_status() 
-        return response.json()
+        return response
     except requests.exceptions.RequestException as e:
-        st.error(f"Erro de comunicação ao consultar SPC: {e}")
+        st.error(f"Erro de comunicação ao consultar SPC: {'Pode ser devido a um documento INCORRETO informado. tente novamente ou contate o suporte.' if 'response' in locals() and response.status_code == 500 else ''}\n{e}")
         return None
     except json.JSONDecodeError:
         st.error("Erro ao decodificar a resposta do SPC (não é um JSON válido).")

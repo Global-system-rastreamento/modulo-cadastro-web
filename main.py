@@ -273,8 +273,18 @@ def page_cadastro_usuario():
             st.session_state.consulta_realizada_spc = False
         else:
             with st.spinner("Consultando SPC/SERASA... Aguarde."):
-                dados_consulta = consultar_spc_api(doc_limpo, tipo_doc_api)
-            
+                response = consultar_spc_api(doc_limpo, tipo_doc_api)
+                dados_consulta = None
+                if response:
+                    if response.status_code == 500:
+                        st.error("Houve um erro no servidor do SPC/SERASA. Pode ser devido a um documento INCORRETO informado. tente novamente ou contate o suporte.")
+
+                    else:
+                        try:
+                            dados_consulta = response.json()
+                        except json.JSONDecodeError:
+                            st.error("Houve um erro ao decodificar a resposta JSON do SPC/SERASA. tente novamente ou contate o suporte.")
+
             if dados_consulta:
                 if dados_consulta.get('result', {}).get('error') == 'true':
                     mensagem_erro_api = dados_consulta.get('result', {}).get('message', 'Erro desconhecido retornado pela API.')
@@ -571,6 +581,7 @@ Telefone: {st.session_state.form_tel_celular}""",
 
                     else:
                         delete_row_from_sheet("CODIGOS", 2)
+                        st.info("Retirado cliente da planilha")
             
             else:
                 st.toast("Formulário inválido!")
@@ -680,7 +691,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                     st.error("Por favor, selecione um usuário para editar. Ou cadastre um primeiro.")
                 else:
                     save_dados_cobranca()
-                    send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get("name", "")}.")
+                    send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get('name', '')}.")
 
         
         with btn_cols[1]:
