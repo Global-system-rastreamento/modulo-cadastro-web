@@ -525,7 +525,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                             
                             new_cod = str(int(older_cod) + 1)
 
-                            new_name_client = f"{new_cod}- {st.session_state.form_nome}"
+                            new_name_client = f"{new_cod}- {st.session_state.form_nome}".upper()
 
                             st.session_state.form_nome_modified = new_name_client
 
@@ -569,7 +569,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                     if response:
                         st.session_state.user_to_edit_data = response
                         add_funcoes()
-                        send_single_telegram_message(f"Atualização de cadastro de usuário: {st.session_state.user_to_edit_id} - {st.session_state.form_nome} - {st.session_state.form_cpf_cnpj}, pelo usuario {st.session_state.username}.")
+                        send_single_telegram_message(f"Atualização de cadastro de usuário: {st.session_state.user_to_edit_id} - {st.session_state.form_nome} - {st.session_state.form_cpf_cnpj}, pelo usuario {st.session_state.username}.", "-4875656287")
                 
                 else:
                     response = cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True)
@@ -577,7 +577,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                         st.session_state.user_to_edit_id = response.get("id", "")
                         st.session_state.user_to_edit_data = response
                         add_funcoes()
-                        send_single_telegram_message(f"Novo cadastro de usuário: {st.session_state.user_to_edit_id} - {st.session_state.form_nome} - {st.session_state.form_cpf_cnpj}, pelo usuario {st.session_state.username}.")
+                        send_single_telegram_message(f"Novo cadastro de usuário: {st.session_state.user_to_edit_id} - {st.session_state.form_nome} - {st.session_state.form_cpf_cnpj}, pelo usuario {st.session_state.username}.", "-4875656287")
 
                     else:
                         delete_row_from_sheet("CODIGOS", 2)
@@ -691,7 +691,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                     st.error("Por favor, selecione um usuário para editar. Ou cadastre um primeiro.")
                 else:
                     save_dados_cobranca()
-                    send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get('name', '')}.")
+                    send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get('name', '')}.", "-4875656287")
 
         
         with btn_cols[1]:
