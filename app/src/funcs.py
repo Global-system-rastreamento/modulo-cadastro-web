@@ -67,10 +67,10 @@ def atualizar_cadastro(dados_formulario, is_cnpj=False, update_data=None):
     data["sisras_user"]["pessoa"] = 2 if is_cnpj else 1
     data["sisras_user"]["respfr"] = 2
     
-    print(json.dumps(data, indent=4))
     response = requests.put(url, headers=COMMON_API_HEADERS, json=data)
     if response.status_code == 200:
         st.success("Cadastro atualizado com sucesso!")
+        return response.json()
     else:
         st.error("Erro ao atualizar o cadastro. Por favor, tente novamente.")
         st.error(response.text)
@@ -451,6 +451,7 @@ def get_vehicles_for_client(user_id):
 
 
 def send_single_telegram_message(message_part: str, chat_id: str) -> bool:
+    print(f"Enviando mensagem para {chat_id}: {message_part}")
     """Envia uma única parte da mensagem para um chat_id."""
     if not message_part or not message_part.strip():
         logging.debug(f"Ignorando envio de mensagem vazia para {chat_id}")
