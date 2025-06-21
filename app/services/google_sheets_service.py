@@ -8,6 +8,8 @@ import shutil
 
 import streamlit as st
 import dotenv
+import json
+import requests
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -20,19 +22,34 @@ SCOPES = [
 ]
 
 def connect_to_sheets():
-    creds_dir_path = 'app/config/keys'
+    creds_dir_path = os.getenv("GCP_ACC_KEY_PATH")
     
     if not os.path.exists(creds_dir_path):
         os.makedirs(creds_dir_path)
-    
-    creds_path = os.path.join(creds_dir_path, 'gcp_service_account.json')
-    
-    with open(creds_path, 'w') as f:
-        f.write(os.getenv('GOOGLE_SERVICE_ACC_KEY'))
+
+    creds_path = os.path.join(creds_dir_path, os.getenv("GCP_KEY_FILENAME"))
+
+    if not os.path.exists(creds_path):
+        url_secret = os.getenv("SERVER_LOAD_GCP_KEY")
+        if not url_secret:
+            raise ValueError("URL_SECRET não está definida no arquivo .env")
+        
+        response = requests.get(os.getenv("SERVER_LOAD_GCP_KEY"))
+
+        response_json = None
+        try:
+            response_json = response.json()
+        except json.JSONDecodeError:
+            pass
+
+        if response_json:
+            with open(creds_path, 'w') as f:
+                f.write(response_json)
+                
+    if not os.path.exists(creds_path):
+        raise FileNotFoundError(f"Arquivo de credenciais não encontrado em {creds_path}")
 
     credentials = Credentials.from_service_account_file(creds_path, scopes=SCOPES)
-
-    shutil.rmtree(creds_dir_path)
 
     return gspread.authorize(credentials)
 

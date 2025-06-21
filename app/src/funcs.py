@@ -7,7 +7,8 @@ import requests
 from concurrent.futures import ThreadPoolExecutor
 import copy
 import json
-from streamlit.components.v1 import html
+from time import sleep
+
 
 X_TOKEN_API = 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7'
 API_BASE_URL = 'https://api.plataforma.app.br'
@@ -445,10 +446,31 @@ def get_vehicles_for_client(user_id):
 
 
 
-def reload_page():
-    js_code = """
-    <script>
-    window.location.reload();
-    </script>
-    """
-    html(js_code, height=0)
+def send_single_telegram_message(message_part: str, chat_id: str) -> bool:
+    """Envia uma única parte da mensagem para um chat_id."""
+    if not message_part or not message_part.strip():
+        logging.debug(f"Ignorando envio de mensagem vazia para {chat_id}")
+        return True
+
+    payload = {'message': message_part}
+    url = f'https://web-production-493b.up.railway.app/sendMessage?chat_id={chat_id}&parse_mode=HTML'
+    max_retries = 2
+    delay = 2
+
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.post(url, json=payload, timeout=20)
+
+            if response.status_code == 200:
+                logging.debug(f"Parte da mensagem enviada com sucesso para {chat_id}.")
+                return True
+            else:
+                logging.error(f"Falha ao enviar parte da mensagem para {chat_id}. Status: {response.status_code}, Resposta: {response.text}. Tentativa {attempt + 1} de {max_retries + 1}.")
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Erro de requisição ao enviar parte da mensagem para {chat_id}: {e}. Tentativa {attempt + 1} de {max_retries + 1}.")
+        
+        if attempt < max_retries:
+            sleep(delay)
+    
+    logging.error(f"Falha ao enviar parte da mensagem para {chat_id} após {max_retries + 1} tentativas.")
+    return False
