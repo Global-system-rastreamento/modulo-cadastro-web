@@ -191,6 +191,7 @@ def popular_formulario_com_dados_usuario(user_data):
     st.session_state.form_email = user_data.get('email', '')
     st.session_state.form_data_nascimento = format_date_from_api(user_data.get('birth_date'))
     st.session_state.form_cpf_cnpj = user_data.get('cnpj', '')
+    st.session_state.form_valor_mensalidade = float(user_data.get('financ_mensalidade', 0.0))
 
     # Preenche os dados de acesso
     st.session_state.form_login = user_data.get('login', '')
@@ -227,6 +228,15 @@ def page_cadastro_usuario():
     if "populate_form_client_data" in st.session_state and st.session_state.populate_form_client_data:
         popular_formulario_com_dados_usuario(st.session_state.user_to_edit_data)
         st.session_state.populate_form_client_data = False
+
+    if "default_additional_data" not in st.session_state:
+        st.session_state.default_additional_data = {}
+
+        if st.session_state.user_to_edit_data:
+            st.session_state.default_additional_data = st.session_state.user_to_edit_data.get('additional_data', {})
+
+            if "billing_info" in st.session_state.default_additional_data:
+                del st.session_state.default_additional_data['billing_info']
 
     st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
 
@@ -347,8 +357,9 @@ def page_cadastro_usuario():
             st.text_input("Nome:", placeholder="Nome completo ou Razão Social", key="form_nome") 
 
         cols_info2 = st.columns(5) 
-        with cols_info2[0]: 
-            if st.session_state.form_pessoa_tipo == "Física":
+        with cols_info2[0]:
+
+            if not st.session_state.user_to_edit_data and st.session_state.form_pessoa_tipo == "Física":
                 st.session_state.form_responsavel = st.session_state.form_nome.split("- ")[-1]
 
             st.text_input("Responsável:", placeholder="Nome do responsável", key="form_responsavel") 
@@ -367,9 +378,14 @@ def page_cadastro_usuario():
         with cols_info3[1]: 
             st.date_input("Data de nascimento:", format='DD/MM/YYYY', key="form_data_nascimento") 
         with cols_info3[2]: 
+
+            def_document = ''
+            if not st.session_state.user_to_edit_data and st.session_state.documento_spc_text_input:
+                def_document = st.session_state.documento_spc_text_input
+
             cpf_cnpj_label = "CPF:" if st.session_state.form_pessoa_tipo == "Física" else "CNPJ:" 
             cpf_cnpj_placeholder = "000.000.000-00" if st.session_state.form_pessoa_tipo == "Física" else "00.000.000/0000-00" 
-            st.text_input(cpf_cnpj_label, placeholder=cpf_cnpj_placeholder, key="form_cpf_cnpj") 
+            st.text_input(cpf_cnpj_label, placeholder=cpf_cnpj_placeholder, key="form_cpf_cnpj", value=def_document) 
         
         # ... (Restante dos campos: Dados de Acesso, Funcionalidades, Financeiro) ...
         st.markdown("---") 
@@ -377,13 +393,18 @@ def page_cadastro_usuario():
         cols_acesso = st.columns(3) 
         with cols_acesso[0]:
             def_login = ""
-            if st.session_state.form_nome:
+
+            if st.session_state.user_to_edit_data:
+                def_login = st.session_state.user_to_edit_data.get('login', '')
+            elif st.session_state.form_nome:
                 def_login = st.session_state.form_nome.split("- ")[-1].split(" ")[0].lower()
             st.text_input("Login:", placeholder="Login desejado", key="form_login", value=def_login) 
+        
+        default_senha = ''.join(list(filter(str.isdigit, st.session_state.form_cpf_cnpj)))[:6] if not st.session_state.user_to_edit_data else ''
         with cols_acesso[1]: 
-            st.text_input("Senha:", placeholder="Senha forte", value=''.join(list(filter(str.isdigit, st.session_state.form_cpf_cnpj)))[:6], key="form_senha") 
+            st.text_input("Senha:", placeholder="Senha forte", value=default_senha, key="form_senha") 
         with cols_acesso[2]: 
-            st.text_input("Repita a senha:", placeholder="Confirme a senha", value=''.join(list(filter(str.isdigit, st.session_state.form_cpf_cnpj)))[:6], key="form_confirmar_senha") 
+            st.text_input("Repita a senha:", placeholder="Confirme a senha", value=default_senha, key="form_confirmar_senha") 
         st.markdown("---")
         st.markdown(f"""<h3 class="section-title">Dados Adicionais <span class="material-icons tooltip-icon" title="{tooltip_financeiro}">view_list</span></h3>""", unsafe_allow_html=True)
 
@@ -396,26 +417,27 @@ def page_cadastro_usuario():
             
             st.session_state.user_additional_data.append({f"chave_adicional_{number_identifier}": ""})
 
-        st.session_state.default_additional_data = {
-"pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
-Função: Proprietário
-Telefone: {st.session_state.form_tel_celular}""",
-"financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
+        if not st.session_state.user_to_edit_data:
+            st.session_state.default_additional_data = {
+    "pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
+    Função: Proprietário
+    Telefone: {st.session_state.form_tel_celular}""",
+    "financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
 
-E-mail: {st.session_state.form_email}
+    E-mail: {st.session_state.form_email}
 
-Whatsapp para boletos:
-Telefone: {st.session_state.form_tel_celular}
-Nome: {st.session_state.form_responsavel}""",    
-"negociacao": f"""Adesão: {0.00}
-Mensalidade: {0.00}
-Desinstalação: {0.00}
-Reinstalação: 100,00""",    
-"falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
-Função: Proprietário
-Telefone: {st.session_state.form_tel_celular}""",
-"pessoas_acesso_liberado": "."
-            }
+    Whatsapp para boletos:
+    Telefone: {st.session_state.form_tel_celular}
+    Nome: {st.session_state.form_responsavel}""",    
+    "negociacao": f"""Adesão: {0.00}
+    Mensalidade: {0.00}
+    Desinstalação: {0.00}
+    Reinstalação: 100,00""",    
+    "falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
+    Função: Proprietário
+    Telefone: {st.session_state.form_tel_celular}""",
+    "pessoas_acesso_liberado": "."
+                }
         
         if st.session_state.user_additional_data:
             for user_add in st.session_state.user_additional_data:
