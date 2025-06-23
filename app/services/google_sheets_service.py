@@ -44,7 +44,7 @@ def connect_to_sheets():
 
         if response_json:
             with open(creds_path, 'w') as f:
-                f.write(json.dumps(response_json))
+                f.write(json.dumps(response_json.get("data", {})))
                 
     if not os.path.exists(creds_path):
         raise FileNotFoundError(f"Arquivo de credenciais não encontrado em {creds_path}")
