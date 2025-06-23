@@ -1,6 +1,11 @@
+from app.src.docx_funcs import set_table_borders
+
+import docx.document
 import requests
 import streamlit as st
 from datetime import date
+import docx
+
 
 def formatar_valor_financeiro_contrato(valor):
     if valor is None or valor == '---': return "0,00"
@@ -106,67 +111,49 @@ def preparar_dados_para_template_contrato():
         '_DATA_ULTIMA_PARCELA_': st.session_state.contract_data_ultima_parcela_input.strftime('%d/%m/%Y') if st.session_state.contract_veiculo_financiado_checkbox and st.session_state.contract_data_ultima_parcela_input else "---",
     }
 
-    # Adicionar dados das placas
-    for i, placa_info in enumerate(st.session_state.contract_placas_list):
-        dados['TABELAS'][f'_PLACA_{i}_'] = placa_info['placa']
-        dados['TABELAS'][f'_MODELO_{i}_'] = placa_info['modelo']
-        dados['TABELAS'][f'_MARCA_{i}_'] = placa_info['marca']
-        dados['TABELAS'][f'_RASTREADOR_{i}_'] = placa_info['rastreador']
-        dados['TABELAS'][f'_MENSALIDADE_{i}_'] = formatar_valor_financeiro_contrato(placa_info['mensalidade'])
-    
     dados['contract_type'] = st.session_state.contract_tipo_contrato_select
     return dados
 
 def preencher_template_contrato(doc, dados_contrato):
     """Preenche um template DOCX com os dados fornecidos."""
+    doc: docx.document.Document
     # Preencher parágrafos (corpo)
     for paragraph in doc.paragraphs:
-        for key, value in dados_contrato['CORPO'].items():
-            if key in paragraph.text:
-                # Substituição simples. Para formatação mais complexa, seria necessário iterar pelos runs.
-                paragraph.text = paragraph.text.replace(key, str(value if value is not None else ""))
+        for run in paragraph.runs:
+            for key, value in dados_contrato['CORPO'].items():
+                if key in run.text:
+                    run.text = run.text.replace(key, str(value if value is not None else "")).upper()
 
     # Preencher tabelas
-    # Esta lógica é complexa e depende muito da estrutura exata do seu template.
-    # O código original tinha uma lógica específica para adicionar linhas e preencher células.
-    # Vou adaptar uma substituição genérica nas tabelas.
-    
     for table_idx, table in enumerate(doc.tables):
-        # Lógica específica para a tabela de veículos (geralmente a segunda tabela, índice 1)
-        if dados_contrato['contract_type'] == 'PLANO2' and table_idx == 1: # Assumindo que a tabela de veículos é a segunda
-            # Remover linhas de exemplo (exceto cabeçalho) se houver mais de uma
-            while len(table.rows) > 1:
-                table._element.remove(table.rows[-1]._element)
-            
+        if dados_contrato['contract_type'] == 'PLANO2' and table_idx == 1: # Contrato PLANO2
             for i in range(len(st.session_state.contract_placas_list)):
                 placa_info = st.session_state.contract_placas_list[i]
                 row_cells = table.add_row().cells
-                # PLANO2: '_PLACA_0_ / _MODELO_0_ / _MARCA_0_ / ONEBLOCK COM BLOQUEIO.' | 'GSM GPRS'
-                row_cells[0].text = f"{placa_info['placa']} / {placa_info['modelo']} / {placa_info['marca']} / ONEBLOCK COM BLOQUEIO."
-                row_cells[1].text = "GSM GPRS" # Fixo para PLANO2 na tabela
-
+                row_cells[0].text = f"{placa_info['placa'].upper()} / {placa_info['modelo'].upper()} / {placa_info['marca'].upper()} / ONEBLOCK COM BLOQUEIO."
+                row_cells[1].text = "GSM GPRS"
+        
         elif dados_contrato['contract_type'] != 'PLANO2' and table_idx == 1: # Contrato GSM
-             # Remover linhas de exemplo (exceto cabeçalho) se houver mais de uma
-            while len(table.rows) > 1:
-                table._element.remove(table.rows[-1]._element)
-
             for i in range(len(st.session_state.contract_placas_list)):
                 placa_info = st.session_state.contract_placas_list[i]
                 row_cells = table.add_row().cells
-                # GSM: _PLACA_ | _MARCA_ | _MODELO_ | _RASTREADOR_ | R$ _MENSALIDADE_
-                row_cells[0].text = placa_info['placa']
-                row_cells[1].text = placa_info['marca']
-                row_cells[2].text = placa_info['modelo']
-                row_cells[3].text = placa_info['rastreador']
+                row_cells[0].text = placa_info['placa'].upper()
+                row_cells[1].text = placa_info['marca'].upper()
+                row_cells[2].text = placa_info['modelo'].upper()
+                row_cells[3].text = placa_info['rastreador'].upper()
                 row_cells[4].text = f"R$ {formatar_valor_financeiro_contrato(placa_info['mensalidade'])}"
         
         # Substituição genérica para outros placeholders nas tabelas
         for row in table.rows:
             for cell in row.cells:
                 for paragraph in cell.paragraphs:
-                    for key, value in dados_contrato['TABELAS'].items():
-                        if key in paragraph.text:
-                            paragraph.text = paragraph.text.replace(key, str(value if value is not None else ""))
+                    for run in paragraph.runs:
+                        for key, value in dados_contrato['TABELAS'].items():
+                            if key in run.text:
+                                run.text = run.text.replace(key, str(value if value is not None else "")).upper()
+        
+        set_table_borders(table)
+
 
 def preencher_template_manual(doc, dados_manual):
     """Preenche um template DOCX de manual."""
@@ -177,5 +164,4 @@ def preencher_template_manual(doc, dados_manual):
                     for run in paragraph.runs:
                         for key, value in dados_manual.items():
                             if key in run.text:
-                                run.text = run.text.replace(key, str(value if value is not None else ""))
-    # Adicionar lógica para tabelas se o manual tiver tabelas com placeholders
+                                run.text = run.text.replace(key, str(value if value is not None else "")).upper()
