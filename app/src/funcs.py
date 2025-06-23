@@ -63,9 +63,11 @@ def atualizar_cadastro(dados_formulario, is_cnpj=False, update_data=None):
     data["sisras_user"]["nivel"] = niveis.index(dados_formulario['tipo_usuario']) + 1
     data["sisras_user"]["nome"] = unidecode.unidecode(dados_formulario["nome"]).upper()
     data["sisras_user"]["respon"] = dados_formulario['responsavel'].upper()
-    data["sisras_user"]["senha"] = dados_formulario["senha"]
     data["sisras_user"]["pessoa"] = 2 if is_cnpj else 1
     data["sisras_user"]["respfr"] = 2
+
+    if dados_formulario["senha"]:
+        data["sisras_user"]["senha"] = dados_formulario["senha"]
     
     response = requests.put(url, headers=COMMON_API_HEADERS, json=data)
     if response.status_code == 200:
