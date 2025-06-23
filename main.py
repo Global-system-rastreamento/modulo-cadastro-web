@@ -797,7 +797,8 @@ def page_cadastro_usuario():
                     st.text_input(f"Tecnologia", value=placa_data["rastreador"], key=f"contract_rastreador_{placa_data['id']}", disabled=True)
                     st.text_input(f"Plano (Contrato)", value=placa_data["plano_spc"], key=f"contract_plano_spc_{placa_data['id']}", disabled=True)
                 else: # GSM - SATELITAL
-                    placa_data["rastreador"] = st.selectbox(f"Tecnologia", ["GSM GPRS", "SATELITAL"], index=["GSM GPRS", "SATELITAL"].index(placa_data["rastreador"]), key=f"contract_rastreador_{placa_data['id']}")
+                    options_technology = ["GSM GPRS", "SATELITAL", "GSM GPRS/SATELITAL"]
+                    placa_data["rastreador"] = st.selectbox(f"Tecnologia", options_technology, index=options_technology.index(placa_data["rastreador"]), key=f"contract_rastreador_{placa_data['id']}")
                     placa_data["plano_spc"] = st.selectbox(f"Plano (Contrato)", ["GSM", "SATELITAL", "PGS"], index=["GSM", "SATELITAL", "PGS"].index(placa_data["plano_spc"]), key=f"contract_plano_spc_{placa_data['id']}")
 
             with cols_placa[3]:
