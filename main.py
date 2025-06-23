@@ -25,6 +25,8 @@ import subprocess
 from streamlit_cookies_manager import EncryptedCookieManager
 from dotenv import load_dotenv
 import warnings
+import glob
+
 
 warnings.filterwarnings("ignore")
 load_dotenv()
@@ -832,6 +834,9 @@ Telefone: {st.session_state.form_tel_celular}""",
                             st.session_state.contract_pdf_filename = f"Contrato_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}_{date.today().strftime('%Y%m%d')}.docx"
 
                             # 5. Salvar localmente
+                            for file in glob.glob("temp_contract_*.docx"):
+                                os.remove(file)
+
                             st.session_state.temp_docx_path = f"temp_contract_{date.today().strftime('%Y%m%d%H%M%S')}.docx"
                             doc.save(st.session_state.temp_docx_path)
 
@@ -1253,8 +1258,6 @@ def inicio():
 def main():
     if not login_screen(st.session_state.cookies):
         return
-    
-    """Roteador principal da aplicação."""
     # Inicializa o estado de navegação
     if "page_to_show" not in st.session_state:
         st.session_state.page_to_show = "inicio"
