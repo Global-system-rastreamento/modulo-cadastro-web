@@ -195,15 +195,6 @@ def popular_formulario_com_dados_usuario(user_data):
     # Preenche os dados de acesso
     st.session_state.form_login = user_data.get('login', '')
     financ_obs = user_data.get('financ_obs', '')
-    senha = ''.join(list(filter(str.isdigit, st.session_state.form_cpf_cnpj)))[:6] # Padrão
-    if "SENHA:" in financ_obs.upper():
-        try:
-            senha_part = financ_obs.upper().split("SENHA:")[1].strip()
-            senha = senha_part.split('.')[0].split(' ')[0]
-        except IndexError:
-            pass 
-    st.session_state.form_senha = senha
-    st.session_state.form_confirmar_senha = senha
 
     # Preenche o financeiro
     try:
