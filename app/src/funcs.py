@@ -363,10 +363,10 @@ def validate_form_cadastro():
     if not st.session_state.form_login:
         st.error("O campo 'Login' é obrigatório!")
         return False
-    if not st.session_state.form_senha:
+    if not st.session_state.form_senha and not st.session_state.user_to_edit_data:
         st.error("O campo 'Senha' é obrigatório!")
         return False
-    if not st.session_state.form_confirmar_senha:
+    if not st.session_state.form_confirmar_senha and not st.session_state.user_to_edit_data:
         st.error("O campo 'Confirmar Senha' é obrigatório!")
         return False
     if st.session_state.form_senha != st.session_state.form_confirmar_senha:
