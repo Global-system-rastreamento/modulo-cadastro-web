@@ -11,7 +11,7 @@ import streamlit_js_eval
 import json
 
 def expire_cookie(cookies, cookie_name):
-    cookies.popitem(cookie_name)
+    cookies.pop(cookie_name)
 
 def check_cookie_expiration(cookies):
     if not cookies.ready():
