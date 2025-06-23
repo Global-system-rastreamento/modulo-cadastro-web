@@ -22,7 +22,10 @@ def check_cookie_expiration(cookies):
     if not auth_cookie:
         return
     
-    auth_cookie_json = json.loads(auth_cookie)
+    try:
+        auth_cookie_json = json.loads(auth_cookie)
+    except json.JSONDecodeError:
+        return
 
     expiry_timestamp = auth_cookie_json.get("expires")
     if not expiry_timestamp:
