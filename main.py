@@ -12,6 +12,7 @@ from app.services.login_service import login_screen
 from app.services.google_sheets_service import *
 from app.services.redis_service import *
 from app.src.funcs import *
+from app.src.manage_data_funcs import load_data, save_data
 
 import streamlit as st
 from datetime import date, datetime 
@@ -1263,6 +1264,8 @@ def main():
         st.session_state.loaded_user_id = None
     if "user_to_edit_data" not in st.session_state:
         st.session_state.user_to_edit_data = None
+    if "event_register_data" not in st.session_state:
+        st.session_state.event_register_data = load_data()
 
     # Verifica os parâmetros da URL para navegar para a página de edição
     query_params = st.query_params
@@ -1271,8 +1274,8 @@ def main():
         try:
             if st.session_state.cookies.ready():
                 # Deletar cookies
-                pop = st.session_state.cookies.pop("auth_token")
-                pop0 = st.session_state.cookies.pop("username")
+                st.session_state.cookies.pop("auth_token")
+                st.session_state.cookies.pop("username")
 
                 print(f"Cookies de autenticação: {st.session_state.cookies}")
                 st.query_params.clear()

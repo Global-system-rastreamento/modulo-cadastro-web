@@ -8,10 +8,38 @@ import uuid
 from datetime import datetime, timedelta
 from time import sleep
 import streamlit_js_eval
+import json
+
+def expire_cookie(cookies, cookie_name):
+    cookies.delete(cookie_name)
+
+def check_cookie_expiration(cookies):
+    if not cookies.ready():
+        return
+    
+    auth_cookie = cookies.get("auth_token")
+
+    if not auth_cookie:
+        return
+    
+    auth_cookie_json = json.loads(auth_cookie)
+
+    expiry_timestamp = auth_cookie_json.get("expires")
+    if not expiry_timestamp:
+        return
+    
+    expiry_datetime = datetime.fromisoformat(expiry_timestamp)
+
+    if datetime.now() > expiry_datetime:
+        for cookie_name in ["auth_token", "username"]:
+            expire_cookie(cookies, cookie_name)
+
 
 def verify_cookie_auth(cookies):
     if not cookies.ready():
         return False
+
+    check_cookie_expiration(cookies)
 
     auth_cookie = cookies.get("auth_token")
     user_cookie = cookies.get("username")
@@ -22,6 +50,7 @@ def verify_cookie_auth(cookies):
 
     if "logged_out" in st.session_state and st.session_state.logged_out:
         streamlit_js_eval.streamlit_js_eval(js_expressions="parent.window.location.reload()")
+
 
     return False
 
@@ -193,12 +222,12 @@ def login_screen(cookies):
                     # Se o usuário marcou "lembrar-me", salvar cookie
                     if remember_me:
                         auth_token = str(uuid.uuid4())
-                        expiry = datetime.now() + timedelta(hours=5)
+                        expiry = (datetime.now() + timedelta(hours=5)).isoformat()
                         
                         try:
                             print("Salvando cookies...")
                             # Salvar cookies
-                            cookies["auth_token"] = auth_token
+                            cookies["auth_token"] = json.dumps({'auth_token': auth_token, 'expires': expiry})
                             cookies["username"] = username
 
                             print("Cookies de 'Lembrar-me' foram configurados.")
