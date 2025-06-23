@@ -132,7 +132,7 @@ def preencher_template_contrato(doc, dados_contrato):
                 row_cells = table.add_row().cells
                 row_cells[0].text = f"{placa_info['placa'].upper()} / {placa_info['modelo'].upper()} / {placa_info['marca'].upper()} / ONEBLOCK COM BLOQUEIO."
                 row_cells[1].text = "GSM GPRS"
-                set_table_borders(table)
+            set_table_borders(table)
         
         elif dados_contrato['contract_type'] != 'PLANO2' and table_idx == 1: # Contrato GSM
             for i in range(len(st.session_state.contract_placas_list)):
@@ -143,7 +143,7 @@ def preencher_template_contrato(doc, dados_contrato):
                 row_cells[2].text = placa_info['modelo'].upper()
                 row_cells[3].text = placa_info['rastreador'].upper()
                 row_cells[4].text = f"R$ {formatar_valor_financeiro_contrato(placa_info['mensalidade'])}"
-                set_table_borders(table)
+            set_table_borders(table)
 
 
         
