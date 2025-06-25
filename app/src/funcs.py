@@ -132,7 +132,7 @@ def get_feature_status(user_id, feature_name):
     try:
         response = requests.get(url, headers=COMMON_API_HEADERS)
         if response.status_code == 200:
-            return response.json().get('enabled', False)
+            return response.json()
         else:
             return False
     except requests.exceptions.RequestException as e:
@@ -205,7 +205,7 @@ def add_funcoes():
                     report_message += f"    <em>Para:</em> {status_map[new_status]}\n"
 
             if has_changes:
-                send_single_telegram_message(report_message)
+                send_single_telegram_message(report_message, chat_id='-4875656287')
         else:
             st.error("Algumas mudanças de funcionalidades falharam. Por favor, tente novamente.")
     else:
