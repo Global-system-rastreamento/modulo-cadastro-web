@@ -253,7 +253,62 @@ def get_client_data(page=1, search_term="", ativo_filter=None, financ_filter=Non
         except requests.exceptions.RequestException as e:
             st.error(f"Erro ao conectar com a API: {e}")
             return None
-        
+
+@st.cache_data(show_spinner=False)
+def get_vehicles_data(search_term=None, current_page=None, items_per_page=None):
+    """Obter TODOS os veículos cadastrados, paginado e por pesquisa"""
+    # --- Configurações da API ---
+    API_URL = "https://api.plataforma.app.br/manager/vehicles"
+    HEADERS = {
+        "Accept": "application/json, text/plain, */*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 OPR/117.0.0.0",
+        "Origin": "https://globalsystem.plataforma.app.br",
+        "Referer": "https://globalsystem.plataforma.app.br/",
+        "x-token": "c0f9e2df-d26b-11ef-9216-0e3d092b76f7"
+    }
+    PARAMS = {
+        "items_per_page": 50 if not items_per_page else items_per_page,
+        "paginate": 1,
+        "current_page": 1 if not current_page else current_page,
+        "sort_by_field": "owner_name",
+        "sort_direction": "asc"
+    }
+    if search_term:
+        PARAMS['all'] = search_term
+
+    # --- Botão para Buscar Dados ---
+    try:
+        with st.spinner("Buscando dados... Por favor, aguarde."):
+            response = requests.get(API_URL, headers=HEADERS, params=PARAMS, timeout=60)
+            response.raise_for_status() # Lança exceção para status HTTP 4xx/5xx
+            data = response.json()
+            st.session_state.fetched_data = True
+
+            data_v = data.get('data', [])
+            if data_v:
+                if not current_page:
+                    st.success(f"{len(data_v)} registros de veículos carregados.")
+
+                return data_v
+            else:
+                return []
+                
+    except requests.exceptions.HTTPError as http_err:
+        st.error(f"Erro HTTP ao buscar dados: {http_err}")
+        st.error(f"Detalhes: {response.text}")
+        st.session_state.fetched_data = False
+        return []
+    
+    except requests.exceptions.RequestException as req_err:
+        st.error(f"Erro de requisição ao buscar dados: {req_err}")
+        st.session_state.fetched_data = False
+        return []
+    
+    except ValueError as json_err: # Trata erro de decodificação do JSON
+        st.error(f"Erro ao decodificar JSON da resposta da API: {json_err}")
+        st.text(f"Conteúdo da resposta: {response.text if 'response' in locals() else 'Não disponível'}")
+        st.session_state.fetched_data = False
+        return []
 
 
 def get_user_data_by_id(user_id):

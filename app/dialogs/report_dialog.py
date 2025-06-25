@@ -31,8 +31,10 @@ def report_dialog():
         st.markdown(f"## Relatório para {client_name}")
         st.markdown("#### Selecione os veículos para incluir no relatório:")
 
+        # Criando colunas que suportam apenas 5 veículos por coluna
         cols_plates = st.columns(math.ceil(len(all_vehicles_dict) / 5))
-        # Cria checkboxes para cada veículo, todos selecionados por padrão
+        
+        # Cria checkboxes para cada veículo, usando corretamente as colunas
         for i, (placa, id_vehicle) in enumerate(all_vehicles_dict.items()):
             
             with cols_plates[i // 5]:

@@ -26,6 +26,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 from dotenv import load_dotenv
 import warnings
 import glob
+import math
 
 
 warnings.filterwarnings("ignore")
@@ -1006,9 +1007,9 @@ def page_cadastro_usuario():
 
 def inicio():
 
-    if "actual_search" in st.session_state and st.session_state.actual_search:
-        st.session_state.search_query_key = st.session_state.actual_search
-        st.session_state.actual_search = ""
+    if "actual_search_client" in st.session_state and st.session_state.actual_search_client:
+        st.session_state.search_query_client_key = st.session_state.actual_search_client
+        st.session_state.actual_search_client = ""
     
     if "show_report" in st.session_state and st.session_state.show_report:
         report_dialog()
@@ -1036,12 +1037,14 @@ def inicio():
         # Filtros
         cols = st.columns([6, 1])
         with cols[0]:
-            search_query = st.text_input("Pesquisar...", label_visibility="collapsed", placeholder="🔎 Pesquisar...", key="search_query_key")
+            search_query_client = st.text_input("Pesquisar...", label_visibility="collapsed", placeholder="🔎 Pesquisar...", key="search_query_client_key")
         with cols[1]:
             st.write(" ")
             st.write(" ")
 
-            st.checkbox("Carregar dados de veículos", key="show_vehicles_checkbox")
+            st.checkbox("Carregar dados de veículos", key="show_vehicles_checkbox", value=True if "search_query_vehicles_key" in st.session_state and st.session_state.search_query_vehicles_key else False)
+
+        search_query_vehicles = st.text_input("Pesquisar veículos...", label_visibility="collapsed", placeholder="🔎 Pesquisar veículos...", key="search_query_vehicles_key")
 
         status_options = {"Todos": "", "Ativo": "1", "Inativo": "0"}
         status_filter = st.selectbox("Status", options=status_options.keys(), label_visibility="collapsed")
@@ -1076,202 +1079,225 @@ def inicio():
     if 'current_page' not in st.session_state:
         st.session_state.current_page = 1
 
-    if search_query:
+    if search_query_client or  search_query_vehicles or status_filter or financ_filter:
         st.session_state.current_page = 1
     
-    if search_query:
+    client_data = None
+    if search_query_client:
         # --- Chamada da API com filtros ---
         client_data = get_client_data(
             page=st.session_state.current_page,
-            search_term=search_query,
+            search_term=search_query_client,
             ativo_filter=1 if status_options.get(status_filter, "") == "Ativo" else 0 if status_options.get(status_filter, "") == "Inativo" else None,
             financ_filter=1 if financ_options.get(financ_filter, "") == "Sim" else 0 if financ_options.get(financ_filter, "") == "Não" else None
         )
 
-        if client_data:
-            total_items = client_data.get('total_items_length', 0)
-            items_per_page = client_data.get('items_per_page', 50)
-            total_pages = (total_items + items_per_page - 1) // items_per_page # Arredonda para cima
+    elif search_query_vehicles:
+        vehicles_data = get_vehicles_data(
+            current_page=st.session_state.current_page,
+            search_term=search_query_vehicles
+        )
 
-            total_clients_placeholder.markdown(f"<div style='text-align: right;'>Total de <strong>{total_items}</strong> usuários</div>", unsafe_allow_html=True)
+        if vehicles_data:
+            for vehicle in vehicles_data:
 
-            # Controles de Paginação
-            st.markdown('<div class="pagination-container">', unsafe_allow_html=True)
-            
-            navigation_cols = st.columns([1, 0.5, 0.09, 0.2, 0.4, 0.5, 1])
+                if client_data is None:
+                    client_data = get_client_data(
+                        page=st.session_state.current_page,
+                        search_term=vehicle.get('owner', {}).get('name', ''),
+                    )
+                else:
+                    new_client_data = get_client_data(
+                        page=st.session_state.current_page,
+                        search_term=vehicle.get('owner', {}).get('name', ''),
+                    )
+                    client_data['data'].extend(new_client_data['data'])
+                    client_data['total_items_length'] += len(client_data['data'])
 
-            with navigation_cols[1]:
-                
-                # Botão para página anterior
-                if st.button('◀ Anterior', disabled=(st.session_state.current_page <= 1)):
-                    st.session_state.current_page -= 1
-                    st.rerun()
+    if client_data:
+        total_items = client_data.get('total_items_length', 0)
+        items_per_page = client_data.get('items_per_page', 50)
+        total_pages = (total_items + items_per_page - 1) // items_per_page # Arredonda para cima
 
-            with navigation_cols[3]:
-                st.write(f"{st.session_state.current_page} de {total_pages}")
+        total_clients_placeholder.markdown(f"<div style='text-align: right;'>Total de <strong>{total_items}</strong> usuários</div>", unsafe_allow_html=True)
 
-            with navigation_cols[5]:
-                # Botão para próxima página
-                if st.button('Próxima ▶', disabled=(st.session_state.current_page >= total_pages)):
-                    st.session_state.current_page += 1
-                    st.rerun()  
-                
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            # --- Tabela de Clientes com HTML ---
-            table_html = """
-            <table class="client-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Usuário</th>
-                        <th>CPF/CNPJ</th>
-                        <th>E-mail</th>
-                        <th>Tipo</th>
-                        <th>Telefone Celular</th>
-                        <th>Ativo</th>
-                        <th>Aviso Financ.</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-            """
-            
-            # Mapeamento do nível de permissão para o tipo de usuário
-            permission_map = {1: "Único", 2: "Frotista", 3: "Operador", 4: "Master"}
-
-            for i, user in enumerate(client_data.get('data', [])):
-                index = ((st.session_state.current_page - 1) * items_per_page) + i + 1
-                user_id = user.get('id', '')
-                user_name = user.get('name', '---')
-                user_cpf_cnpj = user.get('cpf_cnpj', '---')
-                user_email = user.get('email', '---')
-                user_phone = user.get('phone_number', '---')
-                user_type = permission_map.get(user.get('permission_level'), 'Desconhecido')
-                
-                vehicles = None
-                vehicle_list_str = ''
-                if st.session_state.show_vehicles_checkbox:
-                    vehicles = get_vehicles_for_client(user_id)
-                    if not vehicles:
-                        vehicles = []
-
-                    vehicle_list_str = ','.join([f"{v.get('license_plate', '---')}/{v.get('id', '')}" for v in vehicles])
-
-
-                # Ícone para status 'ativo'
-                is_active = user.get('active', 0)
-                active_icon = '<span class="material-icons active-icon" title="Ativo">check_box</span>' if is_active else '<span class="material-icons inactive-icon" title="Inativo">disabled_by_default</span>'
-                
-                # Ícone para 'aviso financeiro'
-                financial_status = user.get('financial_status', 0)
-                financ_icon = '<span class="material-icons active-icon" title="Com Aviso">check_box</span>' if financial_status else '<span class="material-icons" title="Sem Aviso">check_box_outline_blank</span>'
-
-                # Link para a página de edição (exemplo)
-                edit_link = f"/?user_id={user_id}"
-
-                table_html += f"""
-                <tr>
-                    <td>{index}</td>
-                    <td style="display: flex; justify-content: space-between; align-items: center;">
-                        <a href="{edit_link}" target="_blank">{user_name}</a>
-                        <span><a href="https://globalsystem.plataforma.app.br/financeiro/cliente/{user_id}" target="_blank">Acessar Financeiro</a></span>
-                    </td>
-                    <td>{user_cpf_cnpj}</td>
-                    <td>{user_email}</td>
-                    <td>{user_type}</td>
-                    <td>{user_phone}</td>
-                    <td style="text-align: center;">{active_icon}</td>
-                    <td style="text-align: center;">{financ_icon}</td>
-                    <td class="action-icons">
-                        <div class="actions-wrapper">
-                            <a href="https://globalsystem.plataforma.app.br/panel/rastreadores?userId={user_id}" target="_blank" class="tooltip-container">
-                                <span class='material-icons' style='font-size: 1rem; color: black;'>menu</span>
-                                <span class="tooltip">Clique para gerenciar seus rastreadores</span>
-                            </a>
-                            <a href="https://globalsystem.plataforma.app.br/panel/rastreadores/cadastro?userId={user_id}" target="_blank" class="tooltip-container">
-                                <span class='material-icons' style='font-size: 1rem; color: black;'>add</span>
-                                <span class="tooltip">Clique para adicionar um novo rastreador a esse usuário.</span>
-                            </a>
-                            <a href="/?actual_search={search_query}&report_client_name={user_name}&report_client_id={user_id}{f'&all_vehicles={vehicle_list_str}' if vehicle_list_str else ''}" target="_self" class="tooltip-container">
-                                <span class='material-icons' style='font-size: 1rem; color: black;'>description</span>
-                                <span class="tooltip">Clique para criar um relatório de quilometragem e infrações para esse cliente.</span>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                """
+        # Controles de Paginação
+        st.markdown('<div class="pagination-container">', unsafe_allow_html=True)
         
+        navigation_cols = st.columns([1, 0.5, 0.09, 0.2, 0.4, 0.5, 1])
 
-            # --- NOVA SEÇÃO PARA VEÍCULOS ---
-                table_html += f"""
+        with navigation_cols[1]:
+            
+            # Botão para página anterior
+            if st.button('◀ Anterior', disabled=(st.session_state.current_page <= 1)):
+                st.session_state.current_page -= 1
+                st.rerun()
+
+        with navigation_cols[3]:
+            st.write(f"{st.session_state.current_page} de {total_pages}")
+
+        with navigation_cols[5]:
+            # Botão para próxima página
+            if st.button('Próxima ▶', disabled=(st.session_state.current_page >= total_pages)):
+                st.session_state.current_page += 1
+                st.rerun()  
+            
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # --- Tabela de Clientes com HTML ---
+        table_html = """
+        <table class="client-table">
+            <thead>
                 <tr>
-                    <td colspan="9" class="details-cell">
+                    <th>#</th>
+                    <th>Usuário</th>
+                    <th>CPF/CNPJ</th>
+                    <th>E-mail</th>
+                    <th>Tipo</th>
+                    <th>Telefone Celular</th>
+                    <th>Ativo</th>
+                    <th>Aviso Financ.</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        # Mapeamento do nível de permissão para o tipo de usuário
+        permission_map = {1: "Único", 2: "Frotista", 3: "Operador", 4: "Master"}
+
+        for i, user in enumerate(client_data.get('data', [])):
+            index = ((st.session_state.current_page - 1) * items_per_page) + i + 1
+            user_id = user.get('id', '')
+            user_name = user.get('name', '---')
+            user_cpf_cnpj = user.get('cpf_cnpj', '---')
+            user_email = user.get('email', '---')
+            user_phone = user.get('phone_number', '---')
+            user_type = permission_map.get(user.get('permission_level'), 'Desconhecido')
+            
+            vehicles = None
+            vehicle_list_str = ''
+            if st.session_state.show_vehicles_checkbox:
+                vehicles = get_vehicles_for_client(user_id) if not search_query_vehicles else vehicles_data
+                if not vehicles:
+                    vehicles = []
+
+                vehicle_list_str = ','.join([f"{v.get('license_plate', '---')}/{v.get('id', '')}" for v in vehicles])
+
+
+            # Ícone para status 'ativo'
+            is_active = user.get('active', 0)
+            active_icon = '<span class="material-icons active-icon" title="Ativo">check_box</span>' if is_active else '<span class="material-icons inactive-icon" title="Inativo">disabled_by_default</span>'
+            
+            # Ícone para 'aviso financeiro'
+            financial_status = user.get('financial_status', 0)
+            financ_icon = '<span class="material-icons active-icon" title="Com Aviso">check_box</span>' if financial_status else '<span class="material-icons" title="Sem Aviso">check_box_outline_blank</span>'
+
+            # Link para a página de edição (exemplo)
+            edit_link = f"/?user_id={user_id}"
+
+            table_html += f"""
+            <tr>
+                <td>{index}</td>
+                <td style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="{edit_link}" target="_blank">{user_name}</a>
+                    <span><a href="https://globalsystem.plataforma.app.br/financeiro/cliente/{user_id}" target="_blank">Acessar Financeiro</a></span>
+                </td>
+                <td>{user_cpf_cnpj}</td>
+                <td>{user_email}</td>
+                <td>{user_type}</td>
+                <td>{user_phone}</td>
+                <td style="text-align: center;">{active_icon}</td>
+                <td style="text-align: center;">{financ_icon}</td>
+                <td class="action-icons">
+                    <div class="actions-wrapper">
+                        <a href="https://globalsystem.plataforma.app.br/panel/rastreadores?userId={user_id}" target="_blank" class="tooltip-container">
+                            <span class='material-icons' style='font-size: 1rem; color: black;'>menu</span>
+                            <span class="tooltip">Clique para gerenciar seus rastreadores</span>
+                        </a>
+                        <a href="https://globalsystem.plataforma.app.br/panel/rastreadores/cadastro?userId={user_id}" target="_blank" class="tooltip-container">
+                            <span class='material-icons' style='font-size: 1rem; color: black;'>add</span>
+                            <span class="tooltip">Clique para adicionar um novo rastreador a esse usuário.</span>
+                        </a>
+                        <a href="/?actual_search_client={search_query_client}&report_client_name={user_name}&report_client_id={user_id}{f'&all_vehicles={vehicle_list_str}' if vehicle_list_str else ''}" target="_self" class="tooltip-container">
+                            <span class='material-icons' style='font-size: 1rem; color: black;'>description</span>
+                            <span class="tooltip">Clique para criar um relatório de quilometragem e infrações para esse cliente.</span>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            """
+    
+
+        # --- NOVA SEÇÃO PARA VEÍCULOS ---
+            table_html += f"""
+            <tr>
+                <td colspan="9" class="details-cell">
+            """
+
+            if vehicles:
+                # Cria o <details> que permite expandir/recolher
+                table_html += f"""
+                <details>
+                    <summary>Ver/Ocultar {len(vehicles)} Veículo(s)</summary>
+                    <table class="vehicle-table">
+                        <thead>
+                            <tr>
+                                <th>Placa</th>
+                                <th>Marca</th>
+                                <th>Modelo</th>
+                                <th>IMEI</th>
+                                <th>Fabricante</th>
+                                <th>Grupo</th>
+                                <th>Número do Chip</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                """
+                
+                # Itera sobre os veículos retornados pela API
+                for vehicle in vehicles:
+                    all_vehicle_data = get_all_vehicle_data(vehicle.get('id', ''))
+                    placa = vehicle.get('license_plate', '---')
+                    marca = vehicle.get('brand', '---')
+                    modelo = vehicle.get('model', '---')
+                    fabricante = vehicle.get('manufacturer_name', '---')
+                    imei = vehicle.get('imei', '---')
+                    chip_number = vehicle.get('chip_number', '---')
+                    vehicle_id = vehicle.get('id', '---')
+                    
+                    table_html += f"""
+                            <tr>
+                                <td><a href="https://globalsystem.plataforma.app.br/web/individual/{vehicle_id}">{placa}</a></td>
+                                <td>{marca}</td>
+                                <td>{modelo}</td>
+                                <td><a href="https://globalsystem.plataforma.app.br/panel/rastreadores/cadastro/{vehicle_id}">{imei}</a></td>
+                                <td>{fabricante}</td>
+                                <td>{all_vehicle_data.get('groups')}</td>
+                                <td>{chip_number}</td>
+                            </tr>
+                    """
+
+                table_html += """
+                        </tbody>
+                    </table>
+                </details>
+                """
+            elif vehicles is not None:
+                # Se não houver veículos, pode exibir uma mensagem simples
+                table_html += """
+                    <div style="padding: 5px; font-style: italic; color: #888;">&nbsp;&nbsp;Este cliente não possui veículos cadastrados.</div>
                 """
 
-                if vehicles:
-                    # Cria o <details> que permite expandir/recolher
-                    table_html += f"""
-                    <details>
-                        <summary>Ver/Ocultar {len(vehicles)} Veículo(s)</summary>
-                        <table class="vehicle-table">
-                            <thead>
-                                <tr>
-                                    <th>Placa</th>
-                                    <th>Marca</th>
-                                    <th>Modelo</th>
-                                    <th>IMEI</th>
-                                    <th>Fabricante</th>
-                                    <th>Grupo</th>
-                                    <th>Número do Chip</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    """
-                    
-                    # Itera sobre os veículos retornados pela API
-                    for vehicle in vehicles:
-                        all_vehicle_data = get_all_vehicle_data(vehicle.get('id', ''))
-                        placa = vehicle.get('license_plate', '---')
-                        marca = vehicle.get('brand', '---')
-                        modelo = vehicle.get('model', '---')
-                        fabricante = vehicle.get('manufacturer_name', '---')
-                        imei = vehicle.get('imei', '---')
-                        chip_number = vehicle.get('chip_number', '---')
-                        vehicle_id = vehicle.get('id', '---')
-                        
-                        table_html += f"""
-                                <tr>
-                                    <td><a href="https://globalsystem.plataforma.app.br/web/individual/{vehicle_id}">{placa}</a></td>
-                                    <td>{marca}</td>
-                                    <td>{modelo}</td>
-                                    <td><a href="https://globalsystem.plataforma.app.br/panel/rastreadores/cadastro/{vehicle_id}">{imei}</a></td>
-                                    <td>{fabricante}</td>
-                                    <td>{all_vehicle_data.get('groups')}</td>
-                                    <td>{chip_number}</td>
-                                </tr>
-                        """
+            table_html += "</td></tr>"
+            # ###############################################################
+            # ## FIM DA NOVA SEÇÃO                                         ##
+            # ###############################################################
 
-                    table_html += """
-                            </tbody>
-                        </table>
-                    </details>
-                    """
-                elif vehicles is not None:
-                    # Se não houver veículos, pode exibir uma mensagem simples
-                    table_html += """
-                        <div style="padding: 5px; font-style: italic; color: #888;">&nbsp;&nbsp;Este cliente não possui veículos cadastrados.</div>
-                    """
-
-                table_html += "</td></tr>"
-                # ###############################################################
-                # ## FIM DA NOVA SEÇÃO                                         ##
-                # ###############################################################
-
-            table_html += "</tbody></table>"
-            st.markdown(table_html.replace('\n', ''), unsafe_allow_html=True)
-        else:
-            st.warning("Não foi possível carregar os dados dos clientes ou não há clientes para os filtros selecionados.")
+        table_html += "</tbody></table>"
+        st.markdown(table_html.replace('\n', ''), unsafe_allow_html=True)
+    elif (search_query_client and not client_data) or (search_query_vehicles and not client_data):
+        st.warning("Não foi possível carregar os dados dos clientes ou não há clientes para os filtros selecionados.")
     
     st.markdown("---")
     st.caption("© Copyright 2021 - Todos os direitos reservados - Version 3.14.0 (Streamlit Replication)")
@@ -1320,7 +1346,7 @@ def main():
         st.session_state.client_id = query_params.get("report_client_id")
         st.session_state.all_vehicles = query_params.get("all_vehicles", "")
         st.session_state.show_report = True
-        st.session_state.actual_search = query_params.get("actual_search", "")
+        st.session_state.actual_search_client = query_params.get("actual_search_client", "")
 
         st.query_params.clear()
 
