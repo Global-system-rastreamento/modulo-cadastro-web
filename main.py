@@ -618,7 +618,7 @@ Telefone: {st.session_state.form_tel_celular}""",
         if add_d:
             billing_info = add_d.get("billing_info", {})
 
-    with st.container():
+    with st.expander("Editar/Visualizar Dados de Cobrança", expanded=True if st.session_state.user_to_edit_data else False):
         # --- Seção de Informações Pessoais ---
         col1, col2 = st.columns([3, 2]) # Colunas para Nome e Telefone
         with col1:
@@ -728,7 +728,7 @@ Telefone: {st.session_state.form_tel_celular}""",
     st.markdown('---')
     st.markdown(f"""<h3 class="section-title">📄 Gerar Contrato <span class="material-icons tooltip-icon" title="{tooltip_contrato}">article</span></h3>""", unsafe_allow_html=True)
 
-    with st.container():
+    with st.expander("Gerar/Baixar/Enviar Contrato", expanded=False):
         # --- Dados Gerais do Contrato ---
         st.subheader("Dados Gerais do Contrato")
         c1, c2 = st.columns(2)

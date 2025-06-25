@@ -58,7 +58,9 @@ def apply_design():
         padding: 0;
         margin-bottom: 0;
     }
-    
+    .stExpander summary {
+        background-color: transparent !important;
+    }
     /* Principalmente o container geral da página e os que estão dentro de colunas */
     .main .stVerticalBlock, .stColumn .stVerticalBlock {
         background-color: transparent;
