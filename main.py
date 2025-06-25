@@ -608,7 +608,9 @@ def page_cadastro_usuario():
     
     billing_info = {}
     if st.session_state.user_to_edit_data:
-        billing_info = st.session_state.user_to_edit_data.get("additional_data", {}).get("billing_info", {})
+        add_d = st.session_state.user_to_edit_data.get("additional_data", {})
+        if add_d:
+            billing_info = add_d.get("billing_info", {})
 
     with st.container():
         # --- Seção de Informações Pessoais ---
