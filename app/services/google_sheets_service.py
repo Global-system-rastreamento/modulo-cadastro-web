@@ -94,7 +94,7 @@ def inserir_linha(planilha, data):
     
     return retry_operation(insert_row, planilha, data)
 
-def get_worksheets(spreadsheet, nome):
+def get_worksheets(spreadsheet, nome) -> Worksheet:
     def get_worksheet(spreadsheet, nome):
         return spreadsheet.worksheet(nome)
 
@@ -138,5 +138,28 @@ def delete_row_from_sheet(name_sheet, row_index):
         worksheet.delete_rows(row_index)
     except Exception as e:
         st.error(f"Erro ao excluir linha da planilha: {e}")
+
+def update_client_name_in_sheet(client_id, new_name, sheet_name="CODIGOS"):
+    """
+    Updates the client name in the Google Sheet.
+    """
+    try:
+        client = connect_to_sheets()
+        spreadsheet = get_planilha(client, os.getenv("PLAN_ID_KEY"))
+        worksheet = get_worksheets(spreadsheet, sheet_name)
+
+        # Find the row with the matching client ID
+        cell = worksheet.find(str(client_id))
+        if cell:
+            # Assuming the name is in the column to the right of the ID
+            worksheet.update_cell(cell.row, cell.col, new_name)
+            st.info(f"Client name updated in Google Sheet for ID: {client_id}")
+        else:
+            st.warning(f"Client ID {client_id} not found in Google Sheet.")
+
+    except Exception as e:
+        st.error(f"Error updating client name in Google Sheet: {e}")
+
+
 if __name__ == '__main__':
     pass

@@ -1,6 +1,7 @@
 import unidecode
 from datetime import datetime
 from app.services.document_validator import validar_cpf, validar_cnpj
+from app.services.google_sheets_service import update_client_name_in_sheet
 import streamlit as st
 import logging
 import requests
@@ -74,6 +75,9 @@ def atualizar_cadastro(dados_formulario, is_cnpj=False, update_data=None):
     if response.status_code == 200:
         st.success("Cadastro atualizado com sucesso!")
         send_telegram_update_report(st.session_state.user_to_edit_data, response.json())
+        if st.session_state.user_to_edit_data.get('nome') != response.json().get('nome'):
+            cod = st.session_state.user_to_edit_data.get('nome').split(' ')[0]
+            update_client_name_in_sheet(cod, response.json().get('nome'))
         return response.json()
     else:
         st.error("Erro ao atualizar o cadastro. Por favor, tente novamente.")
