@@ -512,9 +512,7 @@ def page_cadastro_usuario():
             st.text_area("Observação (Financeiro Cliente):", placeholder="Detalhes financeiros do cliente...", value=f'Senha: {st.session_state.form_senha}. {st.session_state.username}', key="form_obs_financeiro") 
 
         st.markdown("<br>", unsafe_allow_html=True) 
-        cols_submit_button_main = st.columns([0.6, 0.4]) 
-        with cols_submit_button_main[1]:
-            submitted_form = st.button("✔ Salvar Usuário", type="primary", use_container_width=True)
+        submitted_form = st.button("✔ Salvar Módulo", type="primary", use_container_width=True)
 
     if submitted_form: 
         if st.session_state.form_senha != st.session_state.form_confirmar_senha: 
@@ -707,26 +705,22 @@ def page_cadastro_usuario():
             st.text_input("Estado", key="dados_cobranca_estado", value=def_estado_dc)
 
         st.write("")
-        btn_cols = st.columns([1, 1, 7])
-        
-        with btn_cols[0]:
-            if st.button("Salvar"):
-                if not validate_dados_cobranca():
-                    st.error("Por favor, preencha todos os campos obrigatórios.")
-                elif not st.session_state.user_to_edit_id:
-                    st.error("Por favor, selecione um usuário para editar. Ou cadastre um primeiro.")
-                else:
-                    response = save_dados_cobranca()
-                    if response:
-                        send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get('name', '')}.", "-4875656287")
 
-        
-        with btn_cols[1]:
-            def_index_iss = 1
-            if 'dados_cobranca_iss_retido_index' in st.session_state:
-                def_index_iss = st.session_state.dados_cobranca_iss_retido_index
+        def_index_iss = 1
+        if 'dados_cobranca_iss_retido_index' in st.session_state:
+            def_index_iss = st.session_state.dados_cobranca_iss_retido_index
 
-            st.radio("ISS Retido", key="dados_cobranca_iss_retido", options=["Sim", "Não"], index=def_index_iss, horizontal=True)
+        st.radio("ISS Retido", key="dados_cobranca_iss_retido", options=["Sim", "Não"], index=def_index_iss, horizontal=True)
+
+        if st.button("Salvar Módulo", use_container_width=True):
+            if not validate_dados_cobranca():
+                st.error("Por favor, preencha todos os campos obrigatórios.")
+            elif not st.session_state.user_to_edit_id:
+                st.error("Por favor, selecione um usuário para editar. Ou cadastre um primeiro.")
+            else:
+                response = save_dados_cobranca()
+                if response:
+                    send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get('name', '')}.", "-4875656287")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
