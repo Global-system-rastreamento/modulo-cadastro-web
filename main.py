@@ -195,7 +195,7 @@ def popular_formulario_com_dados_usuario(user_data):
     st.session_state.form_valor_mensalidade = float(user_data.get('financ_mensalidade', 0.0))
 
     if user_data.get('additional_data', {}):
-        st.session_state.dados_cobranca_iss_retido_index = 0 if user_data.get('additional_data', {}).get('billing_info').get('nfe_iss_retido', '') else 1
+        st.session_state.dados_cobranca_iss_retido_index = 0 if user_data.get('additional_data', {}).get('billing_info', {}).get('nfe_iss_retido', '') else 1
 
     # Preenche os dados de acesso
     st.session_state.form_login = user_data.get('login', '')
@@ -588,19 +588,21 @@ Telefone: {st.session_state.form_tel_celular}""",
                 if st.session_state.user_to_edit_id and st.session_state.user_to_edit_data:
                     st.session_state.user_to_edit_data = get_user_data_by_id(st.session_state.user_to_edit_id)
                     response = atualizar_cadastro(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True, update_data=st.session_state.user_to_edit_data)
-                    print(response)
                     if response:
-                        st.session_state.user_to_edit_data = response
-                        add_funcoes()
-                        send_single_telegram_message(f"Atualização de cadastro de usuário: {st.session_state.user_to_edit_id} - {st.session_state.form_nome} - {st.session_state.form_cpf_cnpj}, pelo usuario {st.session_state.username}.", "-4875656287")
-                
+                        try:
+                            add_funcoes()
+                        except Exception as e:
+                            st.error(e)
+                        
+
                 else:
                     response = cadastrar_cliente(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True)
                     if response:
-                        st.session_state.user_to_edit_id = response.get("id", "")
-                        st.session_state.user_to_edit_data = response
-                        add_funcoes()
-                        send_single_telegram_message(f"Novo cadastro de usuário: {st.session_state.user_to_edit_id} - {st.session_state.form_nome} - {st.session_state.form_cpf_cnpj}, pelo usuario {st.session_state.username}.", "-4875656287")
+                        try:
+                            st.session_state.user_to_edit_id = response.get("id", "")
+                            add_funcoes()
+                        except Exception as e:
+                            st.error(e)
 
                     else:
                         delete_row_from_sheet("CODIGOS", 2)
@@ -1367,6 +1369,23 @@ def main():
                 st.session_state.user_to_edit_data = get_user_data_by_id(st.session_state.user_to_edit_id)
                 if st.session_state.user_to_edit_data:
                     popular_formulario_com_dados_usuario(st.session_state.user_to_edit_data)
+                    
+                    features_map = {
+                        "electronic-fence": "form_cerca_eletronica",
+                        "meu-veiculo-app": "form_meu_veiculo_app",
+                        "maintenances": "form_gestao_manutencao",
+                        "vbutton/driver-manager": "form_vbutton_gestao_motorista",
+                        "suntech/i-button": "form_i_button_suntech",
+                        "security-zone": "form_zona_seguranca",
+                        "events-and-alerts": "form_listagem_eventos_alertas",
+                        "signal-failure": "form_listagem_falha_sinal",
+                        "commands": "form_comandos",
+                        "cargo-manager": "form_gestao_controle_carga"
+                    }
+                    
+                    for feature, session_key in features_map.items():
+                        st.session_state[session_key] = get_feature_status(st.session_state.user_to_edit_id, feature)
+
                     st.session_state.loaded_user_id = st.session_state.user_to_edit_id
                 else:
                     st.error(f"Não foi possível carregar os dados para o usuário ID: {st.session_state.user_to_edit_id}.")

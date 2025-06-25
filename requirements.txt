@@ -58,3 +58,4 @@ tzdata==2025.2
 Unidecode==1.4.0
 urllib3==2.4.0
 watchdog==6.0.0
+deepdiff=8.5.0

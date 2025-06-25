@@ -4,7 +4,7 @@ from datetime import datetime
 def apply_design():
     st.set_page_config(layout="wide", page_title="Cadastro de Clientes", page_icon=":house:")
     custom_css = """
-        <style>
+    <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 

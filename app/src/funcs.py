@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 import copy
 import json
 from time import sleep
+from deepdiff import DeepDiff
 
 
 X_TOKEN_API = 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7'
@@ -72,6 +73,7 @@ def atualizar_cadastro(dados_formulario, is_cnpj=False, update_data=None):
     response = requests.put(url, headers=COMMON_API_HEADERS, json=data)
     if response.status_code == 200:
         st.success("Cadastro atualizado com sucesso!")
+        send_telegram_update_report(st.session_state.user_to_edit_data, response.json())
         return response.json()
     else:
         st.error("Erro ao atualizar o cadastro. Por favor, tente novamente.")
@@ -122,39 +124,88 @@ def cadastrar_cliente(dados_formulario=None, is_cnpj=False):
         st.error("Erro ao cadastrar cliente. Verifique os dados e tente novamente.")
         st.error(response.json())
 
+def get_feature_status(user_id, feature_name):
+    """
+    Checks the status of a specific feature for a user.
+    """
+    url = f"https://api.plataforma.app.br/manager/user/{user_id}/feature/{feature_name}"
+    try:
+        response = requests.get(url, headers=COMMON_API_HEADERS)
+        if response.status_code == 200:
+            return response.json().get('enabled', False)
+        else:
+            return False
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error checking feature status for {feature_name}: {e}")
+        return False
+
 def add_funcoes():
     if st.session_state.user_to_edit_id:
-        features = {
-            "electronic-fence": 1 if st.session_state.form_cerca_eletronica else 0,
-            "meu-veiculo-app": 1 if st.session_state.form_meu_veiculo_app else 0,
-            "maintenances": 1 if st.session_state.form_gestao_manutencao else 0,
-            "vbutton/driver-manager": 1 if st.session_state.form_vbutton_gestao_motorista else 0,
-            "suntech/i-button": 1 if st.session_state.form_i_button_suntech else 0,
-            "security-zone": 1 if st.session_state.form_zona_seguranca else 0,
-            "events-and-alerts": 1 if st.session_state.form_listagem_eventos_alertas else 0,
-            "signal-failure": 1 if st.session_state.form_listagem_falha_sinal else 0,
-            "infringements": 0,
-            "commands": 1 if st.session_state.form_comandos else 0,
-            "cargo-manager": 1 if st.session_state.form_gestao_controle_carga else 0
+        
+        features_map = {
+            "electronic-fence": "form_cerca_eletronica",
+            "meu-veiculo-app": "form_meu_veiculo_app",
+            "maintenances": "form_gestao_manutencao",
+            "vbutton/driver-manager": "form_vbutton_gestao_motorista",
+            "suntech/i-button": "form_i_button_suntech",
+            "security-zone": "form_zona_seguranca",
+            "events-and-alerts": "form_listagem_eventos_alertas",
+            "signal-failure": "form_listagem_falha_sinal",
+            "infringements": None,  # This feature is always disabled
+            "commands": "form_comandos",
+            "cargo-manager": "form_gestao_controle_carga"
         }
+
+        old_features = {}
+        for feature, session_key in features_map.items():
+            if session_key:
+                old_features[feature] = get_feature_status(st.session_state.user_to_edit_id, feature)
+
+        new_features = {}
+        for feature, session_key in features_map.items():
+            if session_key:
+                new_features[feature] = 1 if st.session_state[session_key] else 0
+            else:
+                new_features[feature] = 0
+
+
         URLS_PUT = [
-            f"https://api.plataforma.app.br/manager/user/{st.session_state.user_to_edit_id}/feature/{feature}?enable={features[feature]}"
-            for feature in features.keys()
+            f"https://api.plataforma.app.br/manager/user/{st.session_state.user_to_edit_id}/feature/{feature}?enable={status}"
+            for feature, status in new_features.items()
         ]
 
-        # Função para executar a requisição PUT
         def send_put_request(url):
             response = requests.put(url, headers=COMMON_API_HEADERS)
             if response.status_code != 200:
                 print(f"Erro ao enviar PUT para {url}: {response.text}")
             return response.status_code, response.text
 
-        # Executa as requisições em paralelo
         with ThreadPoolExecutor(max_workers=5) as executor:
             results = list(executor.map(send_put_request, URLS_PUT))
 
         if all(result[0] == 200 for result in results):
             st.toast("Todas as mudanças de funcionalidades foram concluídas.")
+            
+            # Compare old and new features to generate a report
+            report_message = "<b>⚙️ Alteração de Funcionalidades ⚙️</b>\n\n"
+            report_message += f"<b>Cliente:</b> {st.session_state.user_to_edit_data.get('nome', 'N/A')}\n"
+            report_message += f"<b>ID:</b> {st.session_state.user_to_edit_id}\n"
+            report_message += f"<b>Responsável:</b> {st.session_state.get('responsible_name', 'N/A')}\n\n"
+            report_message += "<b>Alterações:</b>\n"
+            
+            has_changes = False
+            for feature, old_status in old_features.items():
+                new_status = bool(new_features.get(feature, 0))
+                if old_status != new_status:
+                    has_changes = True
+                    feature_name = feature.replace("-", " ").replace("/", " / ").title()
+                    status_map = {True: "Ativado", False: "Desativado"}
+                    report_message += f"  <b>- {feature_name}:</b>\n"
+                    report_message += f"    <em>De:</em> {status_map[old_status]}\n"
+                    report_message += f"    <em>Para:</em> {status_map[new_status]}\n"
+
+            if has_changes:
+                send_single_telegram_message(report_message)
         else:
             st.error("Algumas mudanças de funcionalidades falharam. Por favor, tente novamente.")
     else:
@@ -207,6 +258,7 @@ def save_dados_cobranca():
 
         if respose.status_code == 200:
             st.toast("Dados de cobranças sincronizados!")
+            send_telegram_update_report(st.session_state.user_to_edit_data, respose.json())
             return respose.json()
         else:
             st.error("Houve um erro ao salvar os dados de cobrança no Nexo. Por favor tente novamente.")
@@ -537,3 +589,65 @@ def send_single_telegram_message(message_part: str, chat_id: str) -> bool:
     
     logging.error(f"Falha ao enviar parte da mensagem para {chat_id} após {max_retries + 1} tentativas.")
     return False
+
+def send_telegram_update_report(old_data, new_data, chat_id='-4875656287'):
+    """
+    Compares user data and sends a report of the changes to Telegram.
+    """
+    # Fields to ignore in the comparison
+    fields_to_ignore = [
+        'root[\'api_token\']',
+        'root[\'ultlogin\']',
+        'root[\'pass_cripto\']',
+        'root[\'documents\']',
+        'root[\'roles\']'
+    ]
+
+    # Create a deep copy of the data to avoid modifying the original
+    old_data_copy = copy.deepcopy(old_data)
+    new_data_copy = copy.deepcopy(new_data)
+
+    # Perform the comparison
+    diff = DeepDiff(old_data_copy, new_data_copy, ignore_order=True, exclude_paths=fields_to_ignore)
+
+    if not diff:
+        logging.info("No changes detected in user data.")
+        return
+
+    # Build the report message
+    message = f"<b>⚠️ Alteração de Cadastro ⚠️</b>\n\n"
+    message += f"<b>Cliente:</b> {old_data.get('nome', 'N/A')}\n"
+    message += f"<b>ID:</b> {old_data.get('id', 'N/A')}\n"
+    message += f"<b>Responsável:</b> {st.session_state.get('responsible_name', 'N/A')}\n\n"
+    message += "<b>Alterações:</b>\n"
+
+    # Helper function to format the values
+    def format_value(value):
+        if isinstance(value, dict):
+            return json.dumps(value, indent=2, ensure_ascii=False)
+        return value
+
+    # Process changes
+    if 'values_changed' in diff:
+        for key, changes in diff['values_changed'].items():
+            field_name = key.replace("root['", "").replace("']", "").replace("['", " -> ").replace("_", " ").title()
+            old_value = format_value(changes['old_value'])
+            new_value = format_value(changes['new_value'])
+            message += f"  <b>- {field_name}:</b>\n"
+            message += f"    <em>De:</em> {old_value}\n"
+            message += f"    <em>Para:</em> {new_value}\n"
+
+    if 'dictionary_item_added' in diff:
+        for key in diff['dictionary_item_added']:
+            field_name = key.replace("root['", "").replace("']", "").replace("['", " -> ").replace("_", " ").title()
+            new_value = format_value(new_data_copy[key.split("['")[1].split("']")[0]])
+            message += f"  <b>- {field_name} (Adicionado):</b> {new_value}\n"
+
+    if 'dictionary_item_removed' in diff:
+        for key in diff['dictionary_item_removed']:
+            field_name = key.replace("root['", "").replace("']", "").replace("['", " -> ").replace("_", " ").title()
+            old_value = format_value(old_data_copy[key.split("['")[1].split("']")[0]])
+            message += f"  <b>- {field_name} (Removido):</b> {old_value}\n"
+
+    # Send the message
+    send_single_telegram_message(message, chat_id)
