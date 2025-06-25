@@ -70,9 +70,6 @@ def preparar_dados_para_template_contrato():
     endereco_completo = st.session_state.form_endereco
     # Heurística simples para extrair partes do endereço. Pode precisar de melhorias.
     partes_endereco = [p.strip() for p in endereco_completo.split(',')]
-    rua_contrato = partes_endereco[0] if len(partes_endereco) > 0 else endereco_completo
-    bairro_contrato = partes_endereco[1] if len(partes_endereco) > 1 else ""
-    cidade_estado_cep = partes_endereco[-1] if len(partes_endereco) > 2 else ""
     
     dados['CORPO'] = {
         'NOME_CLIENTE_COM_COD': st.session_state.form_nome,

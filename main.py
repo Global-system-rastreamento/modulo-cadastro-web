@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 import warnings
 import glob
 import threading
+import queue
 
 warnings.filterwarnings("ignore")
 load_dotenv()
@@ -588,10 +589,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                     response = atualizar_cadastro(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True, update_data=st.session_state.user_to_edit_data)
                     if response:
                         try:
-                            threading.Thread(
-                                target=add_funcoes,
-                                daemon=True
-                            )
+                            add_funcoes(st.session_state.user_to_edit_id, st.session_state.user_to_edit_data)
                         except Exception as e:
                             st.error(e)
                         
@@ -601,10 +599,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                     if response:
                         try:
                             st.session_state.user_to_edit_id = response.get("id", "")
-                            threading.Thread(
-                                target=add_funcoes,
-                                daemon=True
-                            )
+                            add_funcoes(st.session_state.user_to_edit_id, st.session_state.user_to_edit_data)
                         except Exception as e:
                             st.error(e)
 
@@ -1368,6 +1363,8 @@ def main():
             with st.spinner(f"Carregando dados do usuário ID: {st.session_state.user_to_edit_id}..."):
                 st.session_state.user_to_edit_data = get_user_data_by_id(st.session_state.user_to_edit_id)
                 if st.session_state.user_to_edit_data:
+                    st.session_state.loaded_user_id = st.session_state.user_to_edit_id
+
                     popular_formulario_com_dados_usuario(st.session_state.user_to_edit_data)
                     
                     features_map = {
@@ -1383,10 +1380,31 @@ def main():
                         "cargo-manager": "form_gestao_controle_carga"
                     }
                     
-                    for feature, session_key in features_map.items():
-                        st.session_state[session_key] = get_feature_status(st.session_state.user_to_edit_id, feature)
+                    def get_and_update_feature_status(session_key, feature, id_user, result_queue):
+                        result = get_feature_status(id_user, feature)
+                        result_queue.put((session_key, result))
 
-                    st.session_state.loaded_user_id = st.session_state.user_to_edit_id
+                    # Criar queue para receber resultados
+                    result_queue = queue.Queue()
+                    threads = []
+
+                    for feature, session_key in features_map.items():
+                        thread = threading.Thread(
+                            target=get_and_update_feature_status, 
+                            args=(session_key, feature, st.session_state.user_to_edit_id, result_queue)
+                        )
+                        threads.append(thread)
+                        thread.start()
+
+                    # Esperar threads terminarem
+                    for thread in threads:
+                        thread.join()
+
+                    # Atualizar session_state com os resultados
+                    while not result_queue.empty():
+                        session_key, result = result_queue.get()
+                        st.session_state[session_key] = result
+
                 else:
                     st.error(f"Não foi possível carregar os dados para o usuário ID: {st.session_state.user_to_edit_id}.")
                     st.session_state.page_to_show = "inicio" # Volta para a lista em caso de erro

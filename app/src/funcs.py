@@ -143,9 +143,8 @@ def get_feature_status(user_id, feature_name):
         logging.error(f"Error checking feature status for {feature_name}: {e}")
         return False
 
-def add_funcoes():
-    if st.session_state.user_to_edit_id:
-        
+def add_funcoes(user_id, user_data):
+    if user_id:
         features_map = {
             "electronic-fence": "form_cerca_eletronica",
             "meu-veiculo-app": "form_meu_veiculo_app",
@@ -163,7 +162,7 @@ def add_funcoes():
         old_features = {}
         for feature, session_key in features_map.items():
             if session_key:
-                old_features[feature] = get_feature_status(st.session_state.user_to_edit_id, feature)
+                old_features[feature] = get_feature_status(user_id, feature)
 
         new_features = {}
         for feature, session_key in features_map.items():
@@ -179,7 +178,7 @@ def add_funcoes():
                 features_to_update[feature] = status
 
         URLS_PUT = [
-            f"https://api.plataforma.app.br/manager/user/{st.session_state.user_to_edit_id}/feature/{feature}?enable={status}"
+            f"https://api.plataforma.app.br/manager/user/{user_id}/feature/{feature}?enable={status}"
             for feature, status in features_to_update.items()
         ]
 
@@ -197,9 +196,9 @@ def add_funcoes():
             
             # Compare old and new features to generate a report
             report_message = "<b>⚙️ Alteração de Funcionalidades ⚙️</b>\n\n"
-            report_message += f"<b>Cliente:</b> {st.session_state.user_to_edit_data.get('nome', 'N/A')}\n"
-            report_message += f"<b>ID:</b> {st.session_state.user_to_edit_id}\n"
-            report_message += f"<b>Responsável:</b> {st.session_state.get('responsible_name', 'N/A')}\n\n"
+            report_message += f"<b>Cliente:</b> {user_data.get('nome', 'N/A')}\n"
+            report_message += f"<b>ID:</b> {user_id}\n"
+            report_message += f"<b>Responsável:</b> {st.session_state.get('username', 'N/A')}\n\n"
             report_message += "<b>Alterações:</b>\n"
             
             has_changes = False
