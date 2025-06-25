@@ -452,7 +452,7 @@ def page_cadastro_usuario():
                 for key, value in user_add.items():
                     st.session_state.default_additional_data[key] = value
 
-        for key, value in st.session_state.default_additional_data.items() if st.session_state.user_additional_data else {}.items():
+        for key, value in st.session_state.default_additional_data.items() if st.session_state.default_additional_data else {}.items():
             if not st.session_state.user_additional_data:
                 cols_additional_data = st.columns([1, 0.05, 1])
             else:
@@ -1178,7 +1178,7 @@ def inicio():
             vehicles = None
             vehicle_list_str = ''
             if st.session_state.show_vehicles_checkbox:
-                vehicles = get_vehicles_for_client(user_id) if not search_query_vehicles else vehicles_data
+                vehicles = get_vehicles_for_client(user_id) if not search_query_vehicles or not "vehicles_data" in locals() or not vehicles_data else vehicles_data
                 if not vehicles:
                     vehicles = []
 
