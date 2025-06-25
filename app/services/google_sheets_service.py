@@ -119,11 +119,15 @@ def update_planilha(data, nome):
 def get_data_from_sheet(name_sheet):
     try:
         client = connect_to_sheets()
+        print(os.getenv("PLAN_ID_KEY"))
         spreadsheet = get_planilha(client, os.getenv("PLAN_ID_KEY"))
         worksheet = spreadsheet.worksheet(name_sheet)
         data = worksheet.get_all_records()
         return data
     except Exception as e:
+        import traceback
+
+        print(traceback.format_exc())
         st.error(f"Erro ao obter dados da planilha: {e}")
         return None
 

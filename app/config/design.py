@@ -349,6 +349,7 @@ a.nav-btn .material-icons {{
 .btn-maintenance {{ background-color: #a77a24; }}
 .btn-panel {{ background-color: #2f073b; }}
 .btn-financial {{ background-color: #2344a4; }}
+.btn-financial-ag {{ background-color: #2344a4; }}
 .btn-communication {{ background-color: #206e8c; }}
 .btn-web {{ background-color: #583e23; }}
 .btn-logout {{ background-color: red; }}
@@ -377,7 +378,11 @@ a.nav-btn .material-icons {{
         </a>
         <a href="https://globalsystem.plataforma.app.br/financeiro" class="nav-btn btn-financial">
             <span class="material-icons">account_balance</span>
-            <span>Financeiro</span>
+            <span>Financeiro Nexo</span>
+        </a>
+        <a href="https://agendamento-boletos.up.railway.app" class="nav-btn btn-financial-ag">
+            <span class="material-icons">event_available</span>
+            <span>Financeiro AG</span>
         </a>
         <a href="https://globalsystem.plataforma.app.br/communication" class="nav-btn btn-communication">
             <span class="material-icons">send</span>
@@ -386,6 +391,10 @@ a.nav-btn .material-icons {{
         <a href="https://globalsystem.plataforma.app.br/web/franqueado" class="nav-btn btn-web">
             <span class="material-icons">person</span>
             <span>Web</span>
+        </a>
+        <a href="https://globalsystem.plataforma.app.br/maintenance-management" class="nav-btn btn-panel">
+            <span class="material-icons">apps</span>
+            <span>Painel</span>
         </a>
         <a href="/?logout=true" target="_self" class="nav-btn btn-logout">
             <span>Sair</span>

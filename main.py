@@ -444,7 +444,7 @@ def page_cadastro_usuario():
                 for key, value in user_add.items():
                     st.session_state.default_additional_data[key] = value
 
-        for key, value in st.session_state.default_additional_data.items():
+        for key, value in st.session_state.default_additional_data.items() if st.session_state.user_additional_data else {}.items():
             if not st.session_state.user_additional_data:
                 cols_additional_data = st.columns([1, 0.05, 1])
             else:
@@ -1167,7 +1167,7 @@ def inicio():
                 <tr>
                     <td>{index}</td>
                     <td style="display: flex; justify-content: space-between; align-items: center;">
-                        <a href="{edit_link}" target="_self">{user_name}</a>
+                        <a href="{edit_link}" target="_blank">{user_name}</a>
                         <span><a href="https://globalsystem.plataforma.app.br/financeiro/cliente/{user_id}" target="_blank">Acessar Financeiro</a></span>
                     </td>
                     <td>{user_cpf_cnpj}</td>
