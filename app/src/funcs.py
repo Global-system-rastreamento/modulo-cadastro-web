@@ -168,10 +168,15 @@ def add_funcoes():
             else:
                 new_features[feature] = 0
 
+        # Compare old and new features
+        features_to_update = {}
+        for feature, status in new_features.items():
+            if old_features.get(feature) != status:
+                features_to_update[feature] = status
 
         URLS_PUT = [
             f"https://api.plataforma.app.br/manager/user/{st.session_state.user_to_edit_id}/feature/{feature}?enable={status}"
-            for feature, status in new_features.items()
+            for feature, status in features_to_update.items()
         ]
 
         def send_put_request(url):
