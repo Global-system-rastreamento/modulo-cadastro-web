@@ -44,7 +44,13 @@ def apply_design():
         border: 2px solid #bababa;
         margin-bottom: 2rem;
     }
-    /* Remove o estilo de container de elementos que não queremos que pareçam 'cards' */
+    .st-bb .stVerticalBlock {
+        background-color: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        margin-bottom: 0;
+    }
     /* Principalmente o container geral da página e os que estão dentro de colunas */
     .main .stVerticalBlock, .stColumn .stVerticalBlock {
         background-color: transparent;
@@ -57,10 +63,10 @@ def apply_design():
     .main > div > .stVerticalBlock {
         margin-bottom: 0;
     }
-    .stVerticalBlockBorderWrapper {
+    .stVerticalBlockBorderWrapper > div {
         border: 0px solid #e9ecef;
         border-radius: 0px;
-        padding: 20px;
+        padding: 0px;
         background-color: #f8f9fa;
     }
     /* Fim do estilo padrão para st.container */
