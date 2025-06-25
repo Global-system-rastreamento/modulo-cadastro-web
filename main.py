@@ -12,7 +12,6 @@ from app.services.login_service import login_screen
 from app.services.google_sheets_service import *
 from app.services.redis_service import *
 from app.src.funcs import *
-from app.src.manage_data_funcs import load_data, save_data
 
 import streamlit as st
 from datetime import date, datetime 
@@ -26,8 +25,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 from dotenv import load_dotenv
 import warnings
 import glob
-import math
-
+import threading
 
 warnings.filterwarnings("ignore")
 load_dotenv()
@@ -590,7 +588,10 @@ Telefone: {st.session_state.form_tel_celular}""",
                     response = atualizar_cadastro(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True, update_data=st.session_state.user_to_edit_data)
                     if response:
                         try:
-                            add_funcoes()
+                            threading.Thread(
+                                target=add_funcoes,
+                                daemon=True
+                            )
                         except Exception as e:
                             st.error(e)
                         
@@ -600,7 +601,10 @@ Telefone: {st.session_state.form_tel_celular}""",
                     if response:
                         try:
                             st.session_state.user_to_edit_id = response.get("id", "")
-                            add_funcoes()
+                            threading.Thread(
+                                target=add_funcoes,
+                                daemon=True
+                            )
                         except Exception as e:
                             st.error(e)
 
@@ -722,8 +726,6 @@ Telefone: {st.session_state.form_tel_celular}""",
                 st.error("Por favor, selecione um usuário para editar. Ou cadastre um primeiro.")
             else:
                 response = save_dados_cobranca()
-                if response:
-                    send_single_telegram_message(f"Dados de cobrança atualizados para o usuário {st.session_state.user_to_edit_id}, {st.session_state.user_to_edit_data.get('name', '')}.", "-4875656287")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1316,8 +1318,6 @@ def main():
         st.session_state.loaded_user_id = None
     if "user_to_edit_data" not in st.session_state:
         st.session_state.user_to_edit_data = None
-    if "event_register_data" not in st.session_state:
-        st.session_state.event_register_data = load_data()
 
     # Verifica os parâmetros da URL para navegar para a página de edição
     query_params = st.query_params

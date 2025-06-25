@@ -148,14 +148,22 @@ def update_client_name_in_sheet(client_id, new_name, sheet_name="CODIGOS"):
         spreadsheet = get_planilha(client, os.getenv("PLAN_ID_KEY"))
         worksheet = get_worksheets(spreadsheet, sheet_name)
 
-        # Find the row with the matching client ID
-        cell = worksheet.find(str(client_id))
-        if cell:
-            # Assuming the name is in the column to the right of the ID
-            worksheet.update_cell(cell.row, cell.col, new_name)
-            st.info(f"Client name updated in Google Sheet for ID: {client_id}")
+        # Get all values from the second column (column B), assuming this is where the client info is.
+        col_values = worksheet.col_values(2)
+        
+        row_to_update = -1
+        # Find the row that starts with the client ID followed by a dash.
+        for i, cell_value in enumerate(col_values):
+            if cell_value.strip().startswith(str(client_id)):
+                row_to_update = i + 1  # gspread rows are 1-indexed
+                break
+        
+        if row_to_update != -1:
+            # The new_name from the API should be the full string (e.g., "ID- NEW NAME")
+            worksheet.update_cell(row_to_update, 2, new_name)
+            st.info(f"Nome do Cliente atualizado na planilha de códigos.")
         else:
-            st.warning(f"Client ID {client_id} not found in Google Sheet.")
+            st.warning(f"O cliente com ID {client_id} não foi encontrado na planilha de códigos.")
 
     except Exception as e:
         st.error(f"Error updating client name in Google Sheet: {e}")
