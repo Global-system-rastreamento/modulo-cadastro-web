@@ -354,6 +354,7 @@ a.nav-btn .material-icons {{
 .btn-web {{ background-color: #583e23; }}
 .btn-logout {{ background-color: red; }}
 .btn-logout .material-icons {{ font-size: 24px; }}
+.btn-falha-sinal {{ background-color: #8B0000; }}
 
 </style>
 <header class="header-container">
@@ -372,6 +373,10 @@ a.nav-btn .material-icons {{
         </a>
     </div>
     <nav class="nav-buttons">
+        <a href="https://sistemafalhasinal-production.up.railway.app" class="nav-btn btn-falha-sinal">
+            <span class="material-icons">signal_cellular_connected_no_internet_0_bar</span>
+            <span>Falha de Sinal</span>
+        </a>
         <a href="https://globalsystem.plataforma.app.br/maintenance-management" class="nav-btn btn-maintenance">
             <span class="material-icons">build</span>
             <span>Manutenções</span>
