@@ -193,6 +193,9 @@ def popular_formulario_com_dados_usuario(user_data):
     st.session_state.form_cpf_cnpj = user_data.get('cnpj', '')
     st.session_state.form_valor_mensalidade = float(user_data.get('financ_mensalidade', 0.0))
 
+    if user_data.get('additional_data', {}):
+        st.session_state.dados_cobranca_iss_retido_index = 0 if user_data.get('additional_data', {}).get('billing_info').get('nfe_iss_retido', '') else 1
+
     # Preenche os dados de acesso
     st.session_state.form_login = user_data.get('login', '')
     financ_obs = user_data.get('financ_obs', '')
@@ -240,14 +243,15 @@ def page_cadastro_usuario():
 
     st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
 
-    st.caption("Navegação: Menu de Opções > Usuários > Adicionando Usuário") 
+    caption = "Adicionando" if not st.session_state.user_to_edit_data else "Editando"
+    st.caption(f"Navegação: Menu de Opções > Usuários > {caption} Usuário") 
     st.markdown("---") 
     col_form_icon, col_form_title = st.columns([0.05, 0.95], gap="small")
     with col_form_icon:
         st.write('') # Placeholder for icon if needed
         st.markdown("<span class='material-icons' style='font-size: 2.8rem; color: var(--section-title-color);'>group_add</span>", unsafe_allow_html=True) 
     with col_form_title:
-        st.title("Adicionando Usuário") 
+        st.title(f"{caption} Usuário") 
 
 
     # --- SPC integration ---
@@ -715,7 +719,11 @@ def page_cadastro_usuario():
 
         
         with btn_cols[1]:
-            st.radio("ISS Retido", key="dados_cobranca_iss_retido", options=["Sim", "Não"], index=1, horizontal=True)
+            def_index_iss = 1
+            if 'dados_cobranca_iss_retido_index' in st.session_state:
+                def_index_iss = st.session_state.dados_cobranca_iss_retido_index
+
+            st.radio("ISS Retido", key="dados_cobranca_iss_retido", options=["Sim", "Não"], index=def_index_iss, horizontal=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
