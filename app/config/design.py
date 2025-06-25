@@ -51,6 +51,14 @@ def apply_design():
         padding: 0;
         margin-bottom: 0;
     }
+    .stExpander .stVerticalBlock {
+        background-color: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        margin-bottom: 0;
+    }
+    
     /* Principalmente o container geral da página e os que estão dentro de colunas */
     .main .stVerticalBlock, .stColumn .stVerticalBlock {
         background-color: transparent;

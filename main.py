@@ -262,7 +262,7 @@ def page_cadastro_usuario():
     st.markdown("---")
     st.markdown(f"""<h3 class="section-title">Consulta SPC/SERASA <span class="material-icons tooltip-icon" title="{tooltip_spc}">credit_score</span></h3>""", unsafe_allow_html=True)
 
-    with st.container(key="consulta_spc_form_widget"): # Renomeado para evitar conflito com a key do form principal
+    with st.expander("Consulta de SPC/SERASA", expanded=True if st.session_state.user_to_edit_data else False): # Renomeado para evitar conflito com a key do form principal
         col_doc_spc, col_tipo_spc = st.columns(2)
         with col_doc_spc:
             st.text_input("Documento (CPF ou CNPJ):", placeholder="Digite o CPF ou CNPJ", key="documento_spc_text_input")
@@ -427,24 +427,24 @@ def page_cadastro_usuario():
 
         if not st.session_state.user_to_edit_data:
             st.session_state.default_additional_data = {
-    "pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
-    Função: Proprietário
-    Telefone: {st.session_state.form_tel_celular}""",
-    "financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
+"pos_vendas": f"""Responsável: {st.session_state.form_responsavel}
+Função: Proprietário
+Telefone: {st.session_state.form_tel_celular}""",
+"financeiro": f"""BOLETO/NF {st.session_state.form_dia_vencimento}
 
-    E-mail: {st.session_state.form_email}
+E-mail: {st.session_state.form_email}
 
-    Whatsapp para boletos:
-    Telefone: {st.session_state.form_tel_celular}
-    Nome: {st.session_state.form_responsavel}""",    
-    "negociacao": f"""Adesão: {0.00}
-    Mensalidade: {0.00}
-    Desinstalação: {0.00}
-    Reinstalação: 100,00""",    
-    "falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
-    Função: Proprietário
-    Telefone: {st.session_state.form_tel_celular}""",
-    "pessoas_acesso_liberado": "."
+Whatsapp para boletos:
+Telefone: {st.session_state.form_tel_celular}
+Nome: {st.session_state.form_responsavel}""",    
+"negociacao": f"""Adesão: {0.00}
+Mensalidade: {0.00}
+Desinstalação: {0.00}
+Reinstalação: 100,00""",    
+"falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
+Função: Proprietário
+Telefone: {st.session_state.form_tel_celular}""",
+"pessoas_acesso_liberado": "."
                 }
         
         if st.session_state.user_additional_data:
