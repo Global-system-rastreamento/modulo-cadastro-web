@@ -28,13 +28,24 @@ def report_dialog():
     st.markdown(f"## Relatório para {client_name}")
     st.markdown("#### Selecione os veículos para incluir no relatório:")
 
+    cols_plates = st.columns(2)
     # Cria checkboxes para cada veículo, todos selecionados por padrão
-    for placa, id_vehicle in all_vehicles_dict.items():
-        st.checkbox(
-            placa,
-            key=f"vehicle_{id_vehicle}",
-            value=True,
-        )
+    for i, (placa, id_vehicle) in enumerate(all_vehicles_dict.items()):
+
+        if i % 2 == 0:
+            with cols_plates[0]:
+                st.checkbox(
+                    placa,
+                    key=f"vehicle_{id_vehicle}",
+                    value=True,
+                )
+        else:
+            with cols_plates[1]:
+                st.checkbox(
+                    placa,
+                    key=f"vehicle_{id_vehicle}",
+                    value=True,
+                )
     
     st.divider()
 

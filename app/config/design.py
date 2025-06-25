@@ -57,6 +57,12 @@ def apply_design():
     .main > div > .stVerticalBlock {
         margin-bottom: 0;
     }
+    .stVerticalBlockBorderWrapper {
+        border: 0px solid #e9ecef;
+        border-radius: 0px;
+        padding: 20px;
+        background-color: #f8f9fa;
+    }
     /* Fim do estilo padrão para st.container */
     .main .block-container h1 {
         font-family: var(--streamlit-font-family) !important;

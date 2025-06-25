@@ -241,6 +241,9 @@ def page_cadastro_usuario():
             if "billing_info" in st.session_state.default_additional_data:
                 del st.session_state.default_additional_data['billing_info']
 
+            if not st.session_state.default_additional_data:
+                st.session_state.default_additional_data = {}
+
     st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
 
     caption = "Adicionando" if not st.session_state.user_to_edit_data else "Editando"
@@ -248,10 +251,10 @@ def page_cadastro_usuario():
     st.markdown("---") 
     col_form_icon, col_form_title = st.columns([0.05, 0.95], gap="small")
     with col_form_icon:
-        st.write('') # Placeholder for icon if needed
+        st.write('')
         st.markdown("<span class='material-icons' style='font-size: 2.8rem; color: var(--section-title-color);'>group_add</span>", unsafe_allow_html=True) 
     with col_form_title:
-        st.title(f"{caption} Usuário") 
+        st.title(f"{caption} Usuário")
 
 
     # --- SPC integration ---
@@ -261,9 +264,9 @@ def page_cadastro_usuario():
     with st.container(key="consulta_spc_form_widget"): # Renomeado para evitar conflito com a key do form principal
         col_doc_spc, col_tipo_spc = st.columns(2)
         with col_doc_spc:
-            documento_spc_input = st.text_input("Documento (CPF ou CNPJ):", placeholder="Digite o CPF ou CNPJ", key="documento_spc_text_input")
+            st.text_input("Documento (CPF ou CNPJ):", placeholder="Digite o CPF ou CNPJ", key="documento_spc_text_input")
         with col_tipo_spc:
-            tipo_pessoa_spc_radio = st.radio("Tipo de Pessoa:", ("Pessoa Física (CPF)", "Pessoa Jurídica (CNPJ)"), horizontal=True, key="tipo_pessoa_spc_radio_select")
+            st.radio("Tipo de Pessoa:", ("Pessoa Física (CPF)", "Pessoa Jurídica (CNPJ)"), horizontal=True, key="tipo_pessoa_spc_radio_select")
 
 
         submit_button_spc = st.button("🔍 Consultar SPC/SERASA")
@@ -414,7 +417,7 @@ def page_cadastro_usuario():
 
         def add_additional_data_row():
             number_identifier = 0
-            all_keys = list(st.session_state.default_additional_data.keys())
+            all_keys = list(st.session_state.default_additional_data.keys()) if st.session_state.default_additional_data else list({}.keys())
             keys_adc = [k for k in all_keys if k.startswith("chave_adicional")]
             if keys_adc:
                 number_identifier = max([int(k.split("_")[-1]) for k in keys_adc]) + 1
