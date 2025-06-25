@@ -389,15 +389,11 @@ a.nav-btn .material-icons {{
             <span class="material-icons">event_available</span>
             <span>Financeiro AG</span>
         </a>
-        <a href="https://globalsystem.plataforma.app.br/communication" class="nav-btn btn-communication">
-            <span class="material-icons">send</span>
-            <span>Comunicação</span>
-        </a>
         <a href="https://globalsystem.plataforma.app.br/web/franqueado" class="nav-btn btn-web">
             <span class="material-icons">person</span>
             <span>Web</span>
         </a>
-        <a href="https://globalsystem.plataforma.app.br/maintenance-management" class="nav-btn btn-panel">
+        <a href="https://globalsystem.plataforma.app.br/panel" class="nav-btn btn-panel">
             <span class="material-icons">apps</span>
             <span>Painel</span>
         </a>
