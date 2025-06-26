@@ -384,18 +384,22 @@ a.nav-btn .material-icons {{
 
 /* --- INÍCIO: MEDIA QUERIES PARA RESPONSIVIDADE --- */
 
-/* Quando a tela fica pequena, centraliza os dois blocos principais */
-@media (max-width: 1024px) {{
+/* When the screen gets smaller, center the header items.
+   This helps when the button group wraps to the next line. */
+@media (max-width: 1800px) {{
     .header-container {{
-        justify-content: center; /* Centraliza a seção do logo e os botões */
+        justify-content: center;
+    }}
+    .logo-section {{
+        justify-content: center;
     }}
     .nav-buttons {{
-        justify-content: center; /* Centraliza os botões de navegação */
+        justify-content: center;
     }}
 }}
 
 /* Ajustes finos para telas de tablet e menores */
-@media (max-width: 768px) {{
+@media (max-width: 500px) {{
     .logo-section {{
         justify-content: center; /* Centraliza o conteúdo da seção do logo */
         width: 100%;
