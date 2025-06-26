@@ -269,19 +269,22 @@ def get_cabecalho(user_name):
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: #0b3747; /* Cor de fundo azul escuro do original */
-    padding: 10px 25px;
+    flex-wrap: wrap; /* Permite que os itens quebrem para a próxima linha */
+    background-color: #0b3747;
+    padding: 15px 25px; /* Padding ajustado */
     border-radius: 10px;
     color: white;
     font-family: Arial, sans-serif;
     margin-bottom: 2rem;
-    height: 150px; /* Altura fixa para corresponder ao exemplo */
+    height: auto; /* Altura automática para acomodar o conteúdo que quebra a linha */
+    gap: 20px; /* Espaço entre a seção do logo e os botões quando quebram a linha */
 }}
 /* Seção do logo, saudação e menu (lado esquerdo) */
 .logo-section {{
     display: flex;
     align-items: center;
-    gap: 15px; /* Espaçamento entre os elementos */
+    gap: 15px;
+    flex-shrink: 0; /* Evita que a seção do logo encolha */
 }}
 .greeting-logo-wrapper {{
     display: flex;
@@ -339,9 +342,10 @@ a.home-btn span {{ font-size: 13px; font-weight: 700; }}
 .nav-buttons {{
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-end; /* Alinha à direita por padrão */
+    flex-wrap: wrap; /* Permite que os botões quebrem a linha */
     gap: 10px;
-    flex-grow: 1; /* Permite que o container ocupe o espaço restante */
+    flex-grow: 1; /* Ocupa o espaço restante */
 }}
 /* Estilo base para cada botão de navegação */
 a.nav-btn {{
@@ -378,6 +382,64 @@ a.nav-btn .material-icons {{
 .btn-logout .material-icons {{ font-size: 24px; }}
 .btn-falha-sinal {{ background-color: #8B0000; }}
 
+/* --- INÍCIO: MEDIA QUERIES PARA RESPONSIVIDADE --- */
+
+/* Quando a tela fica pequena, centraliza os dois blocos principais */
+@media (max-width: 1024px) {{
+    .header-container {{
+        justify-content: center; /* Centraliza a seção do logo e os botões */
+    }}
+    .nav-buttons {{
+        justify-content: center; /* Centraliza os botões de navegação */
+    }}
+}}
+
+/* Ajustes finos para telas de tablet e menores */
+@media (max-width: 768px) {{
+    .logo-section {{
+        justify-content: center; /* Centraliza o conteúdo da seção do logo */
+        width: 100%;
+    }}
+    .divider {{
+        display: none; /* Oculta o divisor em telas menores */
+    }}
+    a.nav-btn {{
+        padding: 8px 12px;
+        font-size: 14px;
+    }}
+    a.nav-btn .material-icons {{
+        font-size: 26px;
+    }}
+}}
+
+/* Ajustes para telas de celular */
+@media (max-width: 480px) {{
+    .header-container {{
+        padding: 15px;
+    }}
+    .greeting-logo-wrapper {{
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }}
+    a.nav-btn {{
+        flex-direction: column;
+        padding: 6px;
+        font-size: 11px; /* Fonte ainda menor para caber */
+        gap: 2px;
+        min-width: 70px; /* Largura mínima para não ficarem muito espremidos */
+    }}
+    a.nav-btn .material-icons {{
+        font-size: 20px;
+    }}
+    a.home-btn {{
+        width: 60px;
+        height: 60px;
+    }}
+    a.home-btn .material-icons {{ font-size: 24px; }}
+    a.home-btn span {{ font-size: 12px; }}
+}}
+/* --- FIM: MEDIA QUERIES PARA RESPONSIVIDADE --- */
 </style>
 <header class="header-container">
     <!-- Lado Esquerdo: Logo, Saudação e Menu -->
