@@ -261,7 +261,7 @@ def page_cadastro_usuario():
     st.markdown("---")
     st.markdown(f"""<h3 class="section-title">Consulta SPC/SERASA <span class="material-icons tooltip-icon" title="{tooltip_spc}">credit_score</span></h3>""", unsafe_allow_html=True)
 
-    with st.expander("Consulta de SPC/SERASA", expanded=True if st.session_state.user_to_edit_data else False): # Renomeado para evitar conflito com a key do form principal
+    with st.expander("Consulta de SPC/SERASA", expanded=True if not st.session_state.user_to_edit_data else False): # Renomeado para evitar conflito com a key do form principal
         col_doc_spc, col_tipo_spc = st.columns(2)
         with col_doc_spc:
             st.text_input("Documento (CPF ou CNPJ):", placeholder="Digite o CPF ou CNPJ", key="documento_spc_text_input")
@@ -601,6 +601,8 @@ Telefone: {st.session_state.form_tel_celular}""",
                     if response:
                         try:
                             st.session_state.user_to_edit_id = response.get("id", "")
+                            st.session_state.user_to_edit_data = response
+                            
                             add_funcoes(st.session_state.user_to_edit_id, st.session_state.user_to_edit_data)
                         except Exception as e:
                             import traceback
@@ -623,7 +625,7 @@ Telefone: {st.session_state.form_tel_celular}""",
         if add_d:
             billing_info = add_d.get("billing_info", {})
 
-    with st.expander("Editar/Visualizar Dados de Cobrança", expanded=True if st.session_state.user_to_edit_data else False):
+    with st.expander("Editar/Visualizar Dados de Cobrança", expanded=True if not st.session_state.user_to_edit_data else False):
         # --- Seção de Informações Pessoais ---
         col1, col2 = st.columns([3, 2]) # Colunas para Nome e Telefone
         with col1:
