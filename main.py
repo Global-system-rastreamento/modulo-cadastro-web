@@ -591,6 +591,8 @@ Telefone: {st.session_state.form_tel_celular}""",
                         try:
                             add_funcoes(st.session_state.user_to_edit_id, st.session_state.user_to_edit_data)
                         except Exception as e:
+                            import traceback
+                            print(traceback.format_exc())
                             st.error(e)
                         
 
@@ -601,6 +603,8 @@ Telefone: {st.session_state.form_tel_celular}""",
                             st.session_state.user_to_edit_id = response.get("id", "")
                             add_funcoes(st.session_state.user_to_edit_id, st.session_state.user_to_edit_data)
                         except Exception as e:
+                            import traceback
+                            print(traceback.format_exc())
                             st.error(e)
 
                     else:
@@ -1393,6 +1397,7 @@ def main():
                             target=get_and_update_feature_status, 
                             args=(session_key, feature, st.session_state.user_to_edit_id, result_queue)
                         )
+                        
                         threads.append(thread)
                         thread.start()
 
