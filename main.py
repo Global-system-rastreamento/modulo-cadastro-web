@@ -263,25 +263,26 @@ def page_cadastro_usuario():
         st.title(f"{caption} Usuário")
 
     with col_delete_user:
-        if "confirm_user_deleting" in st.session_state and st.session_state.confirm_user_deleting:
-            st.session_state.confirm_user_deleting = False
+        if st.session_state.username in ("admin", "Valdir Luís"):
+            if "confirm_user_deleting" in st.session_state and st.session_state.confirm_user_deleting:
+                st.session_state.confirm_user_deleting = False
 
-            if st.button("Confirmar exclusão", key="confirm_delete_user_button"):
-                result = delete_user(st.session_state.user_to_edit_id)
+                if st.button("Confirmar exclusão", key="confirm_delete_user_button"):
+                    result = delete_user(st.session_state.user_to_edit_id)
 
-                if result:
-                    st.session_state.user_to_edit_data = None
-                    st.session_state.user_to_edit_id = None
-                    st.session_state.page_to_show = "inicio"
+                    if result:
+                        st.session_state.user_to_edit_data = None
+                        st.session_state.user_to_edit_id = None
+                        st.session_state.page_to_show = "inicio"
 
-                    st.success("Usuário deletado com sucesso!")
+                        st.success("Usuário deletado com sucesso!")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao deletar usuário. Tente novamente.")
+            else:
+                if st.button("Apagar Usuário", key="delete_user_button"):
+                    st.session_state.confirm_user_deleting = True
                     st.rerun()
-                else:
-                    st.error("Erro ao deletar usuário. Tente novamente.")
-        else:
-            if st.button("Apagar Usuário", key="delete_user_button"):
-                st.session_state.confirm_user_deleting = True
-                st.rerun()
 
     # --- SPC integration ---
     st.markdown("---")
