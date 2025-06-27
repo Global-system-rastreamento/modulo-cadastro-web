@@ -264,11 +264,12 @@ def page_cadastro_usuario():
 
     with col_delete_user:
         if "confirm_user_deleting" in st.session_state and st.session_state.confirm_user_deleting:
+            st.session_state.confirm_user_deleting = False
+
             if st.button("Confirmar exclusão", key="confirm_delete_user_button"):
                 result = delete_user(st.session_state.user_to_edit_id)
 
                 if result:
-                    st.session_state.confirm_user_deleting = False
                     st.session_state.user_to_edit_data = None
                     st.session_state.user_to_edit_id = None
                     st.session_state.page_to_show = "inicio"
