@@ -145,7 +145,11 @@ def popular_formulario_com_spc(dados_spc_json):
 
     elif consumidor_pj:
         st.session_state.form_pessoa_tipo = "Jurídica" # Atualiza o seletor do formulário principal
-        st.session_state.form_nome = unidecode.unidecode(consumidor_pj.get('razaoSocial', '')).upper()
+        nome = unidecode.unidecode(consumidor_pj.get('razaoSocial', '')).upper()
+        if resultado.get('restricao', False):
+            nome = "I- " + nome
+            
+        st.session_state.form_nome = nome
         st.session_state.form_cpf_cnpj = formatar_documento_spc(consumidor_pj.get('cnpj', {}), 'J')
         st.session_state.form_data_nascimento = formatar_data_spc(consumidor_pj.get('dataAbertura')) 
         
@@ -964,8 +968,6 @@ Telefone: {st.session_state.form_tel_celular}""",
         if st.session_state.contract_emitir_manual_checkbox:
             if st.button("🛠️ Gerar e Baixar Manual (.pdf)", key="generate_manual_button"):
                 with st.spinner("Gerando manual..."):
-                    # Lógica para gerar manual (similar ao contrato)
-                    # 1. Preparar dados para o manual
                     dados_manual = {
                         "_NOME_USUARIO_": st.session_state.form_login,
                         "_SENHA_USUARIO_": st.session_state.form_senha,
