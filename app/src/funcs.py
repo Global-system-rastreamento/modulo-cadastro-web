@@ -566,6 +566,25 @@ def get_vehicles_for_client(user_id):
             logging.error(f"Erro ao decodificar JSON da resposta de veículos para o cliente {user_id}: {json_err}. Resposta: {response.text if 'response' in locals() and response else 'N/A'}")
         return []
 
+def delete_user(user_id):
+    """Deleta um usuário pelo ID."""
+    try:
+        url = f'{API_BASE_URL}/user/{user_id}'
+        
+        response = requests.delete(url, headers=COMMON_API_HEADERS)
+        response.raise_for_status()
+        return bool(response)
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"Erro HTTP ao deletar usuário {user_id}: {http_err}. Resposta: {http_err.response.text if http_err.response else 'N/A'}")
+    except requests.exceptions.ConnectionError as conn_err:
+        logging.error(f"Erro de conexão ao deletar usuário {user_id}: {conn_err}")
+    except requests.exceptions.Timeout as timeout_err:
+        logging.error(f"Timeout ao deletar usuário {user_id}: {timeout_err}")
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"Erro geral de requisição ao deletar usuário {user_id}: {req_err}")
+    except json.JSONDecodeError as json_err:
+        logging.error(f"Erro ao decodificar JSON da resposta de deleção de usuário {user_id}: {json_err}. Resposta: {response.text if 'response' in locals() and response else 'N/A'}")
+
 
 
 def send_single_telegram_message(message_part: str, chat_id: str) -> bool:

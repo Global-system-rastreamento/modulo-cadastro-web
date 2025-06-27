@@ -347,6 +347,44 @@ a.home-btn span {{ font-size: 13px; font-weight: 700; }}
     gap: 10px;
     flex-grow: 1; /* Ocupa o espaço restante */
 }}
+.nav-buttons-normal {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex-grow: 1;
+}}
+
+/* Estilo para o novo botão normal (não-link) */
+.nav-btn-normal {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    border: 3px solid black;
+    border-radius: 15px;
+    color: black;
+    background-color: #a77a24; /* Cor de exemplo, pode ser alterada */
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    font-family: var(--streamlit-font-family);
+}}
+
+.nav-btn-normal:hover {{
+    transform: translateY(-6px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    color: white;
+    border: 3px solid white;
+}}
+
+.nav-btn-normal .material-icons {{
+    font-size: 32px;
+}}
+
+
 /* Estilo base para cada botão de navegação */
 a.nav-btn {{
     display: flex;

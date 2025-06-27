@@ -246,16 +246,41 @@ def page_cadastro_usuario():
 
     st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
 
+    cols = st.columns([0.2, 0.8], gap="large")
+
+        
     caption = "Adicionando" if not st.session_state.user_to_edit_data else "Editando"
-    st.caption(f"Navegação: Menu de Opções > Usuários > {caption} Usuário") 
+    st.caption(f"Navegação: Menu de Opções > Usuários > {caption} Usuário")
+    
+
+
     st.markdown("---") 
-    col_form_icon, col_form_title = st.columns([0.05, 0.95], gap="small")
+    col_form_icon, col_form_title, col_delete_user = st.columns([0.05, 0.8, 0.13], gap="small")
     with col_form_icon:
         st.write('')
         st.markdown("<span class='material-icons' style='font-size: 2.8rem; color: var(--section-title-color);'>group_add</span>", unsafe_allow_html=True) 
     with col_form_title:
         st.title(f"{caption} Usuário")
 
+    with col_delete_user:
+        if "confirm_user_deleting" in st.session_state and st.session_state.confirm_user_deleting:
+            if st.button("Confirmar exclusão", key="confirm_delete_user_button"):
+                result = delete_user(st.session_state.user_to_edit_id)
+
+                if result:
+                    st.session_state.confirm_user_deleting = False
+                    st.session_state.user_to_edit_data = None
+                    st.session_state.user_to_edit_id = None
+                    st.session_state.page_to_show = "inicio"
+
+                    st.success("Usuário deletado com sucesso!")
+                    st.rerun()
+                else:
+                    st.error("Erro ao deletar usuário. Tente novamente.")
+        else:
+            if st.button("Apagar Usuário", key="delete_user_button"):
+                st.session_state.confirm_user_deleting = True
+                st.rerun()
 
     # --- SPC integration ---
     st.markdown("---")
@@ -1322,6 +1347,17 @@ def main():
 
     # Verifica os parâmetros da URL para navegar para a página de edição
     query_params = st.query_params
+    if "delete_user" in query_params:
+        id_to_delete = query_params["delete_user"]
+
+        st.query_params.clear()
+
+        result = delete_user(id_to_delete)
+
+        if result:
+            st.success(f"Usuário com ID {id_to_delete} excluído com sucesso!")
+        else:
+            st.error(f"Erro ao excluir o usuário com ID {id_to_delete}.")
 
     if "logout" in query_params:
         try:
