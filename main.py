@@ -184,7 +184,7 @@ def popular_formulario_com_dados_usuario(user_data):
 
     # Preenche as informações básicas
     st.session_state.form_ativo = bool(user_data.get('ativo', 0))
-    st.session_state.form_aviso_inadimplencia = bool(user_data.get('financ', 0))
+    st.session_state.form_aviso_inadimplencia = bool(user_data.get('financ', 0)) == False
     st.session_state.form_tipo_usuario = permission_map.get(user_data.get('nivel', 2), "Frotista")
     st.session_state.form_pessoa_tipo = "Jurídica" if user_data.get('pessoa') == 2 else "Física"
     st.session_state.form_nome = unidecode.unidecode(user_data.get('nome', '')).upper()
@@ -232,6 +232,7 @@ tooltip_dados_cobranca = "Preencha os dados de cobrança do usuário, para emiss
 tooltip_dados_adicionais = "Preencha os dados adicionais do Usuário."
 
 def page_cadastro_usuario():
+    print("Dentro da func", st.session_state.user_to_edit_data)
     if "populate_form_client_data" in st.session_state and st.session_state.populate_form_client_data:
         popular_formulario_com_dados_usuario(st.session_state.user_to_edit_data)
         st.session_state.populate_form_client_data = False
@@ -240,13 +241,16 @@ def page_cadastro_usuario():
         st.session_state.default_additional_data = {}
 
         if st.session_state.user_to_edit_data:
-            st.session_state.default_additional_data = st.session_state.user_to_edit_data.get('additional_data', {})
+            st.session_state.default_additional_data = copy.deepcopy(st.session_state.user_to_edit_data.get('additional_data', {}))
 
             if "billing_info" in st.session_state.default_additional_data:
                 del st.session_state.default_additional_data['billing_info']
 
             if not st.session_state.default_additional_data:
                 st.session_state.default_additional_data = {}
+        
+    if "senhas" not in st.session_state:
+        st.session_state.senhas = {}
 
     st.markdown(get_cabecalho("Juan"), unsafe_allow_html=True)
 
@@ -620,6 +624,9 @@ Telefone: {st.session_state.form_tel_celular}""",
                     response = atualizar_cadastro(dados_formulario_cliente, False if st.session_state.form_pessoa_tipo == "Física" else True, update_data=st.session_state.user_to_edit_data)
                     if response:
                         try:
+                            if "senha" in dados_formulario_cliente:
+                                st.session_state.senhas[st.session_state.user_to_edit_id] = dados_formulario_cliente["senha"]
+
                             add_funcoes(st.session_state.user_to_edit_id, st.session_state.user_to_edit_data)
                         except Exception as e:
                             import traceback
@@ -634,6 +641,8 @@ Telefone: {st.session_state.form_tel_celular}""",
                             st.session_state.user_to_edit_id = response.get("id", "")
                             st.session_state.user_to_edit_data = response
                             
+                            st.session_state.senhas[st.session_state.user_to_edit_id] = dados_formulario_cliente["senha"]
+
                             add_funcoes(st.session_state.user_to_edit_id, st.session_state.user_to_edit_data)
                         except Exception as e:
                             import traceback
@@ -967,10 +976,17 @@ Telefone: {st.session_state.form_tel_celular}""",
 
         if st.session_state.contract_emitir_manual_checkbox:
             if st.button("🛠️ Gerar e Baixar Manual (.pdf)", key="generate_manual_button"):
+                if not st.session_state.senhas or not st.session_state.user_to_edit_id in st.session_state.senhas:
+                    st.info("Não foi possível recuperar a senha do cliente. Por favor, insira-a abaixo.")
+                    st.text_input("Senha do Cliente:", key="manual_emission_senha")
+                
+                if "manual_emission_senha" in st.session_state and st.session_state.manual_emission_senha:
+                    st.session_state.senhas[st.session_state.user_to_edit_id] = st.session_state.manual_emission_senha
+
                 with st.spinner("Gerando manual..."):
                     dados_manual = {
                         "_NOME_USUARIO_": st.session_state.form_login,
-                        "_SENHA_USUARIO_": st.session_state.form_senha,
+                        "_SENHA_USUARIO_": st.session_state.senhas[st.session_state.user_to_edit_id],
                     }
                     # 2. Baixar template do manual
                     template_manual_name = f"Manual App {st.session_state.contract_tipo_manual_select}.docx"
@@ -1408,6 +1424,7 @@ def main():
         if st.session_state.user_to_edit_id is not None and st.session_state.loaded_user_id != st.session_state.user_to_edit_id:
             with st.spinner(f"Carregando dados do usuário ID: {st.session_state.user_to_edit_id}..."):
                 st.session_state.user_to_edit_data = get_user_data_by_id(st.session_state.user_to_edit_id)
+                print(f"Dados do usuário carregados: {st.session_state.user_to_edit_data}")
                 if st.session_state.user_to_edit_data:
                     st.session_state.loaded_user_id = st.session_state.user_to_edit_id
 

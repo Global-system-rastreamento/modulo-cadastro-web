@@ -56,7 +56,7 @@ def atualizar_cadastro(dados_formulario, is_cnpj=False, update_data=None):
     data["sisras_user"]["endereco"] = dados_formulario['endereco'].upper()
     data["sisras_user"]["fcel"] = dados_formulario['tel_celular']
     data["sisras_user"]["fcom"] = dados_formulario['tel_comercial']
-    data["sisras_user"]["financ"] = 1 if dados_formulario['aviso_inadimplencia'] else 0
+    data["sisras_user"]["financ"] = 0 if dados_formulario['aviso_inadimplencia'] else 1
     data["sisras_user"]["financDataVencimento"] = dados_formulario['dia_vencimento']
     data["sisras_user"]["financMensalidade"] = dados_formulario['valor_mensalidade']
     data["sisras_user"]["financObs"] = dados_formulario["obs_financeiro"]
@@ -94,7 +94,7 @@ def cadastrar_cliente(dados_formulario=None, is_cnpj=False):
                 k: v for k, v in dados_formulario['dados_adicionais'].items()
             },
             "ativo": dados_formulario['ativo'],
-            "financ": 1 if dados_formulario['aviso_inadimplencia'] else 0,
+            "financ": 0 if dados_formulario['aviso_inadimplencia'] else 1,
             "nivel": niveis.index(dados_formulario['tipo_usuario']) + 1,
             "admin": 0,
             "pessoa": 2 if is_cnpj else 1,
@@ -115,7 +115,6 @@ def cadastrar_cliente(dados_formulario=None, is_cnpj=False):
             "respfr": 2
         }
     }
-        
         
     response = requests.post(url, headers=COMMON_API_HEADERS, json=data)
     if response.status_code == 201:
@@ -379,12 +378,19 @@ def get_user_data_by_id(user_id):
     url = f"https://api.plataforma.app.br/user/{user_id}"
     
     headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'X-Token': 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7',
-        'Origin': 'https://globalsystem.plataforma.app.br',
-        'Referer': 'https://globalsystem.plataforma.app.br/'
+        "Host": "api.plataforma.app.br",
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "X-TOKEN": "c0f9e2df-d26b-11ef-9216-0e3d092b76f7",
+        "Origin": "https://globalsystem.plataforma.app.br",
+        "Connection": "keep-alive",
+        "Referer": "https://globalsystem.plataforma.app.br/",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-site",
+        "TE": "trailers"
     }
     
     try:
