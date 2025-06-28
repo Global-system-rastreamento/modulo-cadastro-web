@@ -974,64 +974,67 @@ Telefone: {st.session_state.form_tel_celular}""",
                 st.selectbox("Tipo de Manual:", ["Carro", "Moto", "Frotista"], key="contract_tipo_manual_select",
                             index=["Carro", "Moto", "Frotista"].index(st.session_state.contract_tipo_manual_select))
 
+        if not st.session_state.senhas or not st.session_state.user_to_edit_id in st.session_state.senhas:
+            st.info("Não foi possível recuperar a senha do cliente. Por favor, insira-a abaixo.")
+        
+        st.text_input("Senha do Cliente:", key="manual_emission_senha", value=st.session_state.senhas.get(st.session_state.user_to_edit_id, ""))
+                
+        if "manual_emission_senha" in st.session_state and st.session_state.manual_emission_senha:
+            st.session_state.senhas[st.session_state.user_to_edit_id] = st.session_state.manual_emission_senha
+
         if st.session_state.contract_emitir_manual_checkbox:
             if st.button("🛠️ Gerar e Baixar Manual (.pdf)", key="generate_manual_button"):
-                if not st.session_state.senhas or not st.session_state.user_to_edit_id in st.session_state.senhas:
-                    st.info("Não foi possível recuperar a senha do cliente. Por favor, insira-a abaixo.")
-                    st.text_input("Senha do Cliente:", key="manual_emission_senha")
                 
-                if "manual_emission_senha" in st.session_state and st.session_state.manual_emission_senha:
-                    st.session_state.senhas[st.session_state.user_to_edit_id] = st.session_state.manual_emission_senha
-
-                with st.spinner("Gerando manual..."):
-                    dados_manual = {
-                        "_NOME_USUARIO_": st.session_state.form_login,
-                        "_SENHA_USUARIO_": st.session_state.senhas[st.session_state.user_to_edit_id],
-                    }
-                    # 2. Baixar template do manual
-                    template_manual_name = f"Manual App {st.session_state.contract_tipo_manual_select}.docx"
-                    manual_url_base = "https://api-data-automa-system-production.up.railway.app/download_doc/"
-                    
-                    manual_doc_bytes = baixar_template_docx(manual_url_base + template_manual_name.replace(" ", "%20") + "?path=docs")
-
-                    if manual_doc_bytes:
-                        manual_doc = docx.Document(io.BytesIO(manual_doc_bytes))
-                        # 3. Preencher template do manual
-                        preencher_template_manual(manual_doc, dados_manual)
+                if st.session_state.user_to_edit_id in st.session_state.senhas:
+                    with st.spinner("Gerando manual..."):
+                        dados_manual = {
+                            "_NOME_USUARIO_": st.session_state.form_login,
+                            "_SENHA_USUARIO_": st.session_state.senhas[st.session_state.user_to_edit_id],
+                        }
+                        # 2. Baixar template do manual
+                        template_manual_name = f"Manual App {st.session_state.contract_tipo_manual_select}.docx"
+                        manual_url_base = "https://api-data-automa-system-production.up.railway.app/download_doc/"
                         
-                        # 4. Salvar DOCX em BytesIO
-                        manual_bio_docx = io.BytesIO()
-                        manual_doc.save(manual_bio_docx)
-                        manual_docx_bytes_temp = manual_bio_docx.getvalue()
+                        manual_doc_bytes = baixar_template_docx(manual_url_base + template_manual_name.replace(" ", "%20") + "?path=docs")
 
-                        # 5. Converter para PDF
-                        try:
-                            temp_manual_docx_path = f"temp_manual_{date.today().strftime('%Y%m%d%H%M%S')}.docx"
-                            temp_manual_pdf_path = temp_manual_docx_path.replace(".docx", ".pdf")
-
-                            with open(temp_manual_docx_path, "wb") as f:
-                                f.write(manual_docx_bytes_temp)
+                        if manual_doc_bytes:
+                            manual_doc = docx.Document(io.BytesIO(manual_doc_bytes))
+                            # 3. Preencher template do manual
+                            preencher_template_manual(manual_doc, dados_manual)
                             
-                            subprocess.Popen(["libreoffice", "--headless", "--convert-to", "pdf", temp_manual_docx_path]).wait()
+                            # 4. Salvar DOCX em BytesIO
+                            manual_bio_docx = io.BytesIO()
+                            manual_doc.save(manual_bio_docx)
+                            manual_docx_bytes_temp = manual_bio_docx.getvalue()
 
-                            with open(temp_manual_pdf_path, "rb") as f_pdf:
-                                st.session_state.manual_pdf_bytes = f_pdf.read()
-                            
-                            st.session_state.manual_pdf_filename = f"Manual_App_{st.session_state.contract_tipo_manual_select}_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}.pdf"
-                            st.toast("Manual PDF gerado!")
-                            
-                            if os.path.exists(temp_manual_docx_path): os.remove(temp_manual_docx_path)
-                            if os.path.exists(temp_manual_pdf_path): os.remove(temp_manual_pdf_path)
+                            # 5. Converter para PDF
+                            try:
+                                temp_manual_docx_path = f"temp_manual_{date.today().strftime('%Y%m%d%H%M%S')}.docx"
+                                temp_manual_pdf_path = temp_manual_docx_path.replace(".docx", ".pdf")
 
-                        except Exception as e:
-                            st.error(f"Erro ao converter manual para PDF: {e}")
-                            st.info("Oferecendo download do manual em formato DOCX.")
-                            st.session_state.manual_pdf_bytes = manual_docx_bytes_temp # Salva o DOCX em vez do PDF
-                            st.session_state.manual_pdf_filename = f"Manual_App_{st.session_state.contract_tipo_manual_select}_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}.docx"
-                            if 'temp_manual_docx_path' in locals() and os.path.exists(temp_manual_docx_path): os.remove(temp_manual_docx_path)
-                            if 'temp_manual_pdf_path' in locals() and os.path.exists(temp_manual_pdf_path): os.remove(temp_manual_pdf_path)
-                    else:
-                        st.error(f"Falha ao baixar o template do manual: {template_manual_name}")
+                                with open(temp_manual_docx_path, "wb") as f:
+                                    f.write(manual_docx_bytes_temp)
+                                
+                                subprocess.Popen(["libreoffice", "--headless", "--convert-to", "pdf", temp_manual_docx_path]).wait()
+
+                                with open(temp_manual_pdf_path, "rb") as f_pdf:
+                                    st.session_state.manual_pdf_bytes = f_pdf.read()
+                                
+                                st.session_state.manual_pdf_filename = f"Manual_App_{st.session_state.contract_tipo_manual_select}_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}.pdf"
+                                st.toast("Manual PDF gerado!")
+                                
+                                if os.path.exists(temp_manual_docx_path): os.remove(temp_manual_docx_path)
+                                if os.path.exists(temp_manual_pdf_path): os.remove(temp_manual_pdf_path)
+
+                            except Exception as e:
+                                st.error(f"Erro ao converter manual para PDF: {e}")
+                                st.info("Oferecendo download do manual em formato DOCX.")
+                                st.session_state.manual_pdf_bytes = manual_docx_bytes_temp # Salva o DOCX em vez do PDF
+                                st.session_state.manual_pdf_filename = f"Manual_App_{st.session_state.contract_tipo_manual_select}_{unidecode.unidecode(st.session_state.form_nome.replace(' ','_'))}.docx"
+                                if 'temp_manual_docx_path' in locals() and os.path.exists(temp_manual_docx_path): os.remove(temp_manual_docx_path)
+                                if 'temp_manual_pdf_path' in locals() and os.path.exists(temp_manual_pdf_path): os.remove(temp_manual_pdf_path)
+                        else:
+                            st.error(f"Falha ao baixar o template do manual: {template_manual_name}")
 
 
         if st.session_state.manual_pdf_bytes:
