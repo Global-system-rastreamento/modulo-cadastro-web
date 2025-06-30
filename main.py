@@ -1088,25 +1088,26 @@ def inicio():
         """, unsafe_allow_html=True)
 
         # Filtros
-        cols = st.columns([6, 1])
+        cols = st.columns([2, 0.6, 1])
         with cols[0]:
             search_query_client = st.text_input("Pesquisar...", label_visibility="collapsed", placeholder="🔎 Pesquisar...", key="search_query_client_key")
         with cols[1]:
-            st.write(" ")
+            search_query_vehicles = st.text_input("Pesquisar veículos...", label_visibility="collapsed", placeholder="🔎 Pesquisar veículos...", key="search_query_vehicles_key")
+
+        with cols[2]:
             st.write(" ")
 
             st.checkbox("Carregar dados de veículos", key="show_vehicles_checkbox", value=True if "search_query_vehicles_key" in st.session_state and st.session_state.search_query_vehicles_key else False)
 
-        search_query_vehicles = st.text_input("Pesquisar veículos...", label_visibility="collapsed", placeholder="🔎 Pesquisar veículos...", key="search_query_vehicles_key")
+        cols = st.columns([0.5, 0.5, 2])
 
-        status_options = {"Todos": "", "Ativo": "1", "Inativo": "0"}
-        status_filter = st.selectbox("Status", options=status_options.keys(), label_visibility="collapsed")
-        
-        financ_options = {"Todos": "", "Sim": "1", "Não": "0"}
-        financ_filter = st.selectbox("Aviso Financ.", options=financ_options.keys(), label_visibility="collapsed")
+        with cols[0]:
+            status_options = {"Todos": "", "Ativo": "1", "Inativo": "0"}
+            status_filter = st.selectbox("Status", options=status_options.keys(), label_visibility="collapsed")
+        with cols[1]:
+            financ_options = {"Todos": "", "Sim": "1", "Não": "0"}
+            financ_filter = st.selectbox("Aviso Financ.", options=financ_options.keys(), label_visibility="collapsed")
 
-        st.markdown('</div>', unsafe_allow_html=True)
-    
     # Placeholder para contagem total, será preenchido após a chamada da API
     total_clients_placeholder = right.empty()
     st.markdown('</div>', unsafe_allow_html=True)

@@ -33,6 +33,15 @@ def apply_design():
         display: none !important;
     }
 
+    /* --- Estilização para text_input --- */
+
+    .stTextInput input[placeholder="🔎 Pesquisar veículos..."] {
+        background-color: #bdedb9 !important; /* Um azul bem claro */
+        border: 1px solid #91d5ff !important;
+        color: #0050b3 !important;
+    }
+
+
     /* --- INÍCIO: ESTILO PADRÃO PARA st.container --- */
     /* Baseado na sua sugestão, estamos estilizando a classe .stVerticalBlock
        que o Streamlit usa para containers. Isso evita a necessidade de wrappers de markdown. */
