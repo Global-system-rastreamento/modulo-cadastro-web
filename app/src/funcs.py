@@ -650,7 +650,7 @@ def send_telegram_update_report(old_data, new_data, chat_id='-4875656287'):
     message = f"<b>⚠️ Alteração de Cadastro ⚠️</b>\n\n"
     message += f"<b>Cliente:</b> {old_data.get('nome', 'N/A')}\n"
     message += f"<b>ID:</b> {old_data.get('id', 'N/A')}\n"
-    message += f"<b>Responsável:</b> {st.session_state.get('responsible_name', 'N/A')}\n\n"
+    message += f"<b>Responsável:</b> {st.session_state.get('username', 'N/A')}\n\n"
     message += "<b>Alterações:</b>\n"
 
     # Helper function to format the values
