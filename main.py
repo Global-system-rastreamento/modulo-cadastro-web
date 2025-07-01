@@ -1068,6 +1068,15 @@ def inicio():
         report_dialog()
         st.session_state.show_report = False
 
+    if "actual_type_search" not in st.session_state:
+        st.session_state.actual_type_search = "cliente"
+
+    if "client_data" not in st.session_state:
+        st.session_state.client_data = None
+
+    if "clientes_data_from_vehicle_search" not in st.session_state:
+        st.session_state.clientes_data_from_vehicle_search = []
+
     st.markdown(get_cabecalho(st.session_state.username), unsafe_allow_html=True)
 
     # --- Main Content ---
@@ -1088,13 +1097,33 @@ def inicio():
         """, unsafe_allow_html=True)
 
         # Filtros
-        cols = st.columns([2, 0.6, 1])
+        cols = st.columns([0.2, 2, 0.6, 1])
         with cols[0]:
-            search_query_client = st.text_input("Pesquisar...", label_visibility="collapsed", placeholder="🔎 Pesquisar...", key="search_query_client_key")
+            st.write(" ")
+            if st.button("🗑️", help="Limpar pesquisa"):
+                st.session_state.search_query_client_key = ""
+                st.session_state.search_query_vehicles_key = ""
+                st.session_state.actual_search_client = ""
+                
         with cols[1]:
-            search_query_vehicles = st.text_input("Pesquisar veículos...", label_visibility="collapsed", placeholder="🔎 Pesquisar veículos...", key="search_query_vehicles_key")
+            def switch_to_client_search():
+                st.session_state.actual_type_search = "cliente"
 
+            search_query_client = st.text_input("Pesquisar...", label_visibility="collapsed", placeholder="🔎 Pesquisar...", key="search_query_client_key", on_change=switch_to_client_search)
         with cols[2]:
+            def switch_to_vehicles_search():
+                st.session_state.actual_type_search = "veículos"
+
+                if st.session_state.clientes_data_from_vehicle_search:
+                    for data in st.session_state.clientes_data_from_vehicle_search:
+                        if data in st.session_state.client_data['data']:
+                            st.session_state.client_data['data'].remove(data)
+                    
+                    st.session_state.clientes_data_from_vehicle_search = []
+
+            search_query_vehicles = st.text_input("Pesquisar veículos...", label_visibility="collapsed", placeholder="🔎 Pesquisar veículos...", key="search_query_vehicles_key", on_change=switch_to_vehicles_search)
+
+        with cols[3]:
             st.write(" ")
 
             st.checkbox("Carregar dados de veículos", key="show_vehicles_checkbox", value=True if "search_query_vehicles_key" in st.session_state and st.session_state.search_query_vehicles_key else False)
@@ -1119,6 +1148,9 @@ def inicio():
             get_client_data.clear() 
             get_vehicles_for_client.clear()
             get_all_vehicle_data.clear()
+
+            st.session_state.client_data = None
+
             st.rerun()
     
     with button_cols[1]:
@@ -1136,17 +1168,16 @@ def inicio():
     if search_query_client or  search_query_vehicles or status_filter or financ_filter:
         st.session_state.current_page = 1
     
-    client_data = None
-    if search_query_client:
+    if search_query_client and st.session_state.actual_type_search == "cliente":
         # --- Chamada da API com filtros ---
-        client_data = get_client_data(
+        st.session_state.client_data = get_client_data(
             page=st.session_state.current_page,
             search_term=search_query_client,
             ativo_filter=1 if status_options.get(status_filter, "") == "Ativo" else 0 if status_options.get(status_filter, "") == "Inativo" else None,
             financ_filter=1 if financ_options.get(financ_filter, "") == "Sim" else 0 if financ_options.get(financ_filter, "") == "Não" else None
         )
 
-    elif search_query_vehicles:
+    elif search_query_vehicles and st.session_state.actual_type_search == "veículos":
         vehicles_data = get_vehicles_data(
             current_page=st.session_state.current_page,
             search_term=search_query_vehicles
@@ -1155,8 +1186,8 @@ def inicio():
         if vehicles_data:
             for vehicle in vehicles_data:
 
-                if client_data is None:
-                    client_data = get_client_data(
+                if st.session_state.client_data is None:
+                    st.session_state.client_data = get_client_data(
                         page=st.session_state.current_page,
                         search_term=vehicle.get('owner', {}).get('name', ''),
                     )
@@ -1165,12 +1196,20 @@ def inicio():
                         page=st.session_state.current_page,
                         search_term=vehicle.get('owner', {}).get('name', ''),
                     )
-                    client_data['data'].extend(new_client_data['data'])
-                    client_data['total_items_length'] += len(client_data['data'])
 
-    if client_data:
-        total_items = client_data.get('total_items_length', 0)
-        items_per_page = client_data.get('items_per_page', 50)
+                    data_to_extend = []
+                    for client in new_client_data['data']:
+                        if client not in st.session_state.client_data['data']:
+                            data_to_extend.append(client)
+
+                    st.session_state.clientes_data_from_vehicle_search.extend(data_to_extend)
+
+                    st.session_state.client_data['data'].extend(data_to_extend)
+                    st.session_state.client_data['total_items_length'] += len(st.session_state.client_data['data'])
+
+    if st.session_state.client_data:
+        total_items = st.session_state.client_data.get('total_items_length', 0)
+        items_per_page = st.session_state.client_data.get('items_per_page', 50)
         total_pages = (total_items + items_per_page - 1) // items_per_page # Arredonda para cima
 
         total_clients_placeholder.markdown(f"<div style='text-align: right;'>Total de <strong>{total_items}</strong> usuários</div>", unsafe_allow_html=True)
@@ -1220,7 +1259,7 @@ def inicio():
         # Mapeamento do nível de permissão para o tipo de usuário
         permission_map = {1: "Único", 2: "Frotista", 3: "Operador", 4: "Master"}
 
-        for i, user in enumerate(client_data.get('data', [])):
+        for i, user in enumerate(st.session_state.client_data.get('data', [])):
             index = ((st.session_state.current_page - 1) * items_per_page) + i + 1
             user_id = user.get('id', '')
             user_name = user.get('name', '---')
@@ -1229,12 +1268,14 @@ def inicio():
             user_phone = user.get('phone_number', '---')
             user_type = permission_map.get(user.get('permission_level'), 'Desconhecido')
             
-            vehicles = None
             vehicle_list_str = ''
+            vehicles = []
+
             if st.session_state.show_vehicles_checkbox:
-                vehicles = get_vehicles_for_client(user_id) if not search_query_vehicles or not "vehicles_data" in locals() or not vehicles_data else vehicles_data
-                if not vehicles:
-                    vehicles = []
+                if "vehicles_data" in locals() and vehicles_data:
+                    for vehicle in vehicles_data:
+                        if vehicle.get('owner', {}).get('id') == user_id:
+                            vehicles.append(vehicle)
 
                 vehicle_list_str = ','.join([f"{v.get('license_plate', '---')}/{v.get('id', '')}" for v in vehicles])
 
@@ -1350,7 +1391,7 @@ def inicio():
 
         table_html += "</tbody></table>"
         st.markdown(table_html.replace('\n', ''), unsafe_allow_html=True)
-    elif (search_query_client and not client_data) or (search_query_vehicles and not client_data):
+    elif (search_query_client and not st.session_state.client_data) or (search_query_vehicles and not st.session_state.client_data):
         st.warning("Não foi possível carregar os dados dos clientes ou não há clientes para os filtros selecionados.")
     
     st.markdown("---")

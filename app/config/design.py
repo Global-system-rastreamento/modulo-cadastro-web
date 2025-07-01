@@ -41,6 +41,18 @@ def apply_design():
         color: #0050b3 !important;
     }
 
+    /* --- Estilo para o botão de limpar pesquisa (lixeira) --- */
+    div[data-testid="stButton"] > button[title="Limpar pesquisa"] {
+        background-color: #ff4d4f !important; /* Vermelho para ação de "limpar" */
+        border-color: #ff4d4f !important;
+        color: white !important;
+    }
+    
+    div[data-testid="stButton"] > button[title="Limpar pesquisa"]:hover {
+        background-color: white !important;
+        color: #ff4d4f !important;
+        border-color: #ff4d4f !important;
+    }
 
     /* --- INÍCIO: ESTILO PADRÃO PARA st.container --- */
     /* Baseado na sua sugestão, estamos estilizando a classe .stVerticalBlock
