@@ -1269,9 +1269,11 @@ def inicio():
             user_type = permission_map.get(user.get('permission_level'), 'Desconhecido')
             
             vehicle_list_str = ''
-            vehicles = []
+            vehicles = None
 
             if st.session_state.show_vehicles_checkbox:
+                vehicles = []
+                
                 if "vehicles_data" in locals() and vehicles_data:
                     for vehicle in vehicles_data:
                         if vehicle.get('owner', {}).get('id') == user_id:
