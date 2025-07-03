@@ -517,6 +517,82 @@ Telefone: {st.session_state.form_tel_celular}""",
             st.button("Adicionar Dados Adicionais", key="form_adicionar_dados_adicionais", on_click=add_additional_data_row)
 
         st.markdown("---") 
+
+        # st.markdown(f"""<h3 class="section-title">📜 Gerenciar Contratos</h3>""", unsafe_allow_html=True)
+
+        # contracts_data = [
+        #     {
+        #         "type": "Rastreamento",
+        #         "date": "14/04/2021 às 16:01",
+        #         "url": "https://sisras-contracts.s3.sa-east-1.amazonaws.com/1618409735_Reginaldo_dalagnollo_dos_santos.pdf"
+        #     },
+        #     {
+        #         "type": "LGPD",
+        #         "date": "25/09/2022 às 04:02",
+        #         "url": "https://licensee-contracts.s3.amazonaws.com/globalsystem/contract-lgpd-11-11-2021-18-34.pdf"
+        #     },
+        #     {
+        #         "type": "LGPD",
+        #         "date": "11/11/2021 às 15:40",
+        #         "url": "https://licensee-contracts.s3.amazonaws.com/globalsystem/contract-lgpd-11-11-2021-18-39.pdf"
+        #     }
+        # ]
+
+        # # --- Lista de Contratos Existentes ---
+        # st.subheader("Contratos do Cliente")
+        # for i, contract in enumerate(contracts_data):
+        #     st.markdown('<div class="contract-item-container">', unsafe_allow_html=True)
+        #     cols = st.columns([0.1, 0.6, 0.3])
+            
+        #     with cols[0]:
+        #         st.markdown(f'<div class="contract-number">{i+1}</div>', unsafe_allow_html=True)
+            
+        #     with cols[1]:
+        #         st.markdown(f"""
+        #         <div class="contract-details">
+        #             <p class="capitalize">Tipo do contrato: <strong>{contract['type']}</strong></p>
+        #             <p>Data de Aceite: <strong>{contract['date']}</strong></p>
+        #         </div>
+        #         """, unsafe_allow_html=True)
+
+        #     with cols[2]:
+        #         st.markdown('<div class="contract-actions">', unsafe_allow_html=True)
+        #         st.button("Informações do Aceite", key=f"info_accept_{i}", use_container_width=True)
+        #         st.markdown(f"""
+        #         <div class="view-contract-link">
+        #             <a href="{contract['url']}" target="_blank">Visualizar contrato</a>
+        #         </div>
+        #         """, unsafe_allow_html=True)
+        #         st.markdown('</div>', unsafe_allow_html=True)
+
+        #     st.markdown('</div>', unsafe_allow_html=True)
+        
+        # # --- Seção de Upload de Novo Contrato ---
+        # st.markdown('<div class="contract-upload-area">', unsafe_allow_html=True)
+        # st.subheader("Subir Novo Contrato")
+        
+        # upload_cols = st.columns([2, 1])
+        # with upload_cols[0]:
+        #     uploaded_file = st.file_uploader(
+        #         "Selecione o arquivo do contrato:", 
+        #         type=['pdf', 'docx', 'jpg', 'png'],
+        #         label_visibility="collapsed"
+        #     )
+        
+        # with upload_cols[1]:
+        #     # O botão "Enviar" fica desabilitado até que um arquivo seja selecionado
+        #     send_disabled = uploaded_file is None
+        #     if st.button("Enviar Contrato", use_container_width=True, disabled=send_disabled):
+        #         with st.spinner(f"Enviando '{uploaded_file.name}'..."):
+        #             # Lógica para salvar o arquivo (ex: enviar para um bucket S3, API, etc.)
+        #             # Exemplo:
+        #             # save_contract_to_backend(st.session_state.user_to_edit_id, uploaded_file)
+        #             st.success(f"Contrato '{uploaded_file.name}' enviado com sucesso!")
+
+        # st.markdown('</div>', unsafe_allow_html=True)
+        
+        # st.markdown("---")
+
         st.markdown(f"""<h3 class="section-title"><strong>Funcionalidades</strong><span class="material-icons tooltip-icon" title="{tooltip_funcionalidades}">toggle_on</span></h3>""", unsafe_allow_html=True) 
         cols_func = st.columns(5) 
         with cols_func[0]: 
@@ -1278,6 +1354,9 @@ def inicio():
                     for vehicle in vehicles_data:
                         if vehicle.get('owner', {}).get('id') == user_id:
                             vehicles.append(vehicle)
+                
+                else:
+                    vehicles = get_vehicles_for_client(user_id)
 
                 vehicle_list_str = ','.join([f"{v.get('license_plate', '---')}/{v.get('id', '')}" for v in vehicles])
 

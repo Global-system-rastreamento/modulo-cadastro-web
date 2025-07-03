@@ -54,6 +54,60 @@ def apply_design():
         border-color: #ff4d4f !important;
     }
 
+    /* --- Estilo para a seção de contratos no cadastro --- */
+    .ancora-contratos ~ div[data-testid="stVerticalBlockBorderWrapper"] {
+            background-color: #f9f9f9;
+            padding: 1.2rem 1.2rem 1.5rem 1.2rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            /* Podemos até adicionar uma transição suave para um efeito mais polido */
+            transition: box-shadow 0.2s ease-in-out;
+        }
+
+        .ancora-contratos ~ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        /* O resto do CSS permanece o mesmo, pois já é específico o suficiente */
+        .view-contract-link a {
+            display: block;
+            padding: 0.5rem 0.75rem;
+            background-color: #fff;
+            color: var(--primary-color, #0d6efd);
+            border: 1px solid var(--primary-color, #0d6efd);
+            border-radius: 0.5rem;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.2s ease-in-out;
+            margin-top: 0.8rem;
+        }
+        .view-contract-link a:hover {
+            background-color: var(--primary-color, #0d6efd);
+            color: white;
+        }
+        
+        div[data-testid="stButton"] > button {
+            width: 100%;
+        }
+
+        .contract-details p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #444;
+        }
+        .contract-details p strong {
+            color: #000;
+        }
+        
+        .section-subheader {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 1rem;
+        }
+    
+    /** --- Fim da seção de contratos --- */
+
     /* --- INÍCIO: ESTILO PADRÃO PARA st.container --- */
     /* Baseado na sua sugestão, estamos estilizando a classe .stVerticalBlock
        que o Streamlit usa para containers. Isso evita a necessidade de wrappers de markdown. */
