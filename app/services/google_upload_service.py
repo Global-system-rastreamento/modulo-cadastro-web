@@ -32,6 +32,9 @@ def upload_to_drive(file_path: bytes, file_name: str, file_type: str, folder_id:
 
     # --- 1. GERENCIAMENTO DE CREDENCIAIS (integrando seu código) ---
     try:
+        if not os.path.exists("app/config/keys"):
+            os.makedirs("app/config/keys")
+            
         client_secrets_path = "app/config/keys/client_secret_upload_contract.json"
         with open(client_secrets_path, "w") as f:
             f.write(os.getenv("CLIENT_SECRET_OAUTH"))
