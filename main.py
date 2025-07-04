@@ -29,6 +29,7 @@ import warnings
 import glob
 import threading
 import queue
+import glob
 
 warnings.filterwarnings("ignore")
 load_dotenv()
@@ -625,6 +626,9 @@ Telefone: {st.session_state.form_tel_celular}""",
                                     st.toast("Arquivo enviado para o Google Drive com sucesso!", icon="✅")
                                 else:
                                     st.toast("Erro ao enviar o arquivo para o Google Drive!", icon="❌")
+
+                                for file in glob.glob("temp_*"):
+                                    os.remove(file)
 
                                 st.rerun()
                             else:
