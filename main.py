@@ -1233,12 +1233,14 @@ def inicio():
             def switch_to_vehicles_search():
                 st.session_state.actual_type_search = "veículos"
 
-                if st.session_state.clientes_data_from_vehicle_search:
-                    for data in st.session_state.clientes_data_from_vehicle_search:
-                        if data in st.session_state.client_data['data']:
-                            st.session_state.client_data['data'].remove(data)
+                if st.session_state.client_data:
                     
-                    st.session_state.clientes_data_from_vehicle_search = []
+                    if st.session_state.clientes_data_from_vehicle_search:
+                        for data in st.session_state.clientes_data_from_vehicle_search:
+                            if data in st.session_state.client_data['data']:
+                                st.session_state.client_data['data'].remove(data)
+                        
+                        st.session_state.clientes_data_from_vehicle_search = []
 
             search_query_vehicles = st.text_input("Pesquisar veículos...", label_visibility="collapsed", placeholder="🔎 Pesquisar veículos...", key="search_query_vehicles_key", on_change=switch_to_vehicles_search)
 
