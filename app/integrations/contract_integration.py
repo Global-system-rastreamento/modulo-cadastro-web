@@ -165,3 +165,9 @@ def preencher_template_manual(doc, dados_manual):
                         for key, value in dados_manual.items():
                             if key in run.text:
                                 run.text = run.text.replace(key, str(value if value is not None else ""))
+    
+    for paragraph in doc.paragraphs:
+        for run in paragraph.runs:
+            for key, value in dados_manual.items():
+                if key in run.text:
+                    run.text = run.text.replace(key, str(value if value is not None else ""))

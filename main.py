@@ -1111,7 +1111,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                             "_SENHA_USUARIO_": st.session_state.senhas[st.session_state.user_to_edit_id],
                         }
                         # 2. Baixar template do manual
-                        template_manual_name = f"Manual App {st.session_state.contract_tipo_manual_select}.docx"
+                        template_manual_name = f"Manual App {'Usuario' if st.session_state.contract_tipo_manual_select == 'Frotista' else ''} {st.session_state.contract_tipo_manual_select}.docx"
                         manual_url_base = "https://api-data-automa-system-production.up.railway.app/download_doc/"
                         
                         manual_doc_bytes = baixar_template_docx(manual_url_base + template_manual_name.replace(" ", "%20") + "?path=docs")
