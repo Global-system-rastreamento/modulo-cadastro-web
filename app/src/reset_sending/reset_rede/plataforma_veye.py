@@ -105,7 +105,7 @@ def main(recipient, session):
         logger = logging.getLogger(__name__)
 
         # Replace with actual credentials and data
-        user_login = "suporte@globalsystem24h.com"
+        user_login = "suporteglobalsystem24h@gmail.com"
         user_password = "gsjs5656"
         target_msisdn = recipient
         sim_technology = "4G"
