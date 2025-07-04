@@ -10,8 +10,10 @@ from app.services.document_validator import *
 from app.src.funcs import *
 from app.services.login_service import login_screen
 from app.services.google_sheets_service import *
+from app.services.google_upload_service import *
 from app.services.redis_service import *
 from app.src.funcs import *
+from app.src.reset_sending.reset_sending import process_reset_sending
 
 import streamlit as st
 from datetime import date, datetime 
@@ -232,7 +234,6 @@ tooltip_dados_cobranca = "Preencha os dados de cobrança do usuário, para emiss
 tooltip_dados_adicionais = "Preencha os dados adicionais do Usuário."
 
 def page_cadastro_usuario():
-    print("Dentro da func", st.session_state.user_to_edit_data)
     if "populate_form_client_data" in st.session_state and st.session_state.populate_form_client_data:
         popular_formulario_com_dados_usuario(st.session_state.user_to_edit_data)
         st.session_state.populate_form_client_data = False
@@ -474,7 +475,7 @@ Nome: {st.session_state.form_responsavel}""",
 "negociacao": f"""Adesão: {0.00}
 Mensalidade: {0.00}
 Desinstalação: {0.00}
-Reinstalação: 100,00""",    
+Reinstalação: {st.session_state.contract_valor_reinstalacao_input if 'contract_valor_reinstalacao_input' in st.session_state else '100,00'}""",    
 "falha_sinal": f"""Responsável: {st.session_state.form_responsavel}
 Função: Proprietário
 Telefone: {st.session_state.form_tel_celular}""",
@@ -518,80 +519,118 @@ Telefone: {st.session_state.form_tel_celular}""",
 
         st.markdown("---") 
 
-        # st.markdown(f"""<h3 class="section-title">📜 Gerenciar Contratos</h3>""", unsafe_allow_html=True)
+        if st.session_state.user_to_edit_data:
+            st.markdown(f"""<h3 class="section-title">📜 Gerenciar Contratos</h3>""", unsafe_allow_html=True)
 
-        # contracts_data = [
-        #     {
-        #         "type": "Rastreamento",
-        #         "date": "14/04/2021 às 16:01",
-        #         "url": "https://sisras-contracts.s3.sa-east-1.amazonaws.com/1618409735_Reginaldo_dalagnollo_dos_santos.pdf"
-        #     },
-        #     {
-        #         "type": "LGPD",
-        #         "date": "25/09/2022 às 04:02",
-        #         "url": "https://licensee-contracts.s3.amazonaws.com/globalsystem/contract-lgpd-11-11-2021-18-34.pdf"
-        #     },
-        #     {
-        #         "type": "LGPD",
-        #         "date": "11/11/2021 às 15:40",
-        #         "url": "https://licensee-contracts.s3.amazonaws.com/globalsystem/contract-lgpd-11-11-2021-18-39.pdf"
-        #     }
-        # ]
+            with st.expander("Gerenciar Contratos"):
+                pending_contracts, pending_error = get_pending_contracts(st.session_state.user_to_edit_id)
+                accepted_contracts, accepted_error = get_accepted_contracts(st.session_state.user_to_edit_id)
 
-        # # --- Lista de Contratos Existentes ---
-        # st.subheader("Contratos do Cliente")
-        # for i, contract in enumerate(contracts_data):
-        #     st.markdown('<div class="contract-item-container">', unsafe_allow_html=True)
-        #     cols = st.columns([0.1, 0.6, 0.3])
+                contracts_type_map = {
+                    "tracker": "Rastreamento",
+                    "lgpd": "LGPD",
+                    "": "Rastreamento"
+                }
+
+                # --- Seção de Contratos Pendentes ---
+                user_id = st.session_state.user_to_edit_id
+                st.subheader("Pendentes de Aceite")
+                pending_contracts, pending_error = get_pending_contracts(user_id)
+                if pending_error:
+                    st.error(pending_error)
+                elif not pending_contracts:
+                    st.info("Nenhum contrato pendente de aceite.")
+                else:
+                    st.markdown('<div class="contract-list">', unsafe_allow_html=True)
+                    for i, contract in enumerate(pending_contracts):
+                        contract_type = contract.get('type', 'N/A')
+                        contract_link = contract.get('link', '#')
+                        pending_html = f"""
+                        <div class="contract-list-item">
+                            <span class="contract-item-number">{i + 1}</span>
+                            <div class="contract-item-content">
+                                <div class="contract-item-details">
+                                    <p>Tipo do contrato: <strong>{contracts_type_map[contract_type]}</strong></p>
+                                    <p>Status: <strong>Aguardando Aceite do Cliente</strong></p>
+                                </div>
+                                <div class="contract-item-actions">
+                                    <a href="{contract_link}" target="_blank" class="contract-btn btn-view-contract">Visualizar Contrato</a>
+                                </div>
+                            </div>
+                        </div>
+                        """
+                        st.markdown(pending_html, unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                st.divider()
+
+                # --- Seção de Contratos Aceitos ---
+                st.subheader("Contratos Aceitos")
+                accepted_contracts, accepted_error = get_accepted_contracts(user_id)
+                if accepted_error:
+                    st.error(accepted_error)
+                elif not accepted_contracts:
+                    st.info("Nenhum contrato aceito encontrado.")
+                else:
+                    for i, contract in enumerate(accepted_contracts):
+                        accept_date_str = "Data indefinida"
+                        if contract.get('accept_date'):
+                            try:
+                                dt_str = contract['accept_date'].split('+')[0]
+                                dt_object = datetime.fromisoformat(dt_str)
+                                accept_date_str = dt_object.strftime("%d/%m/%Y às %H:%M")
+                            except (ValueError, TypeError) as e:
+                                accept_date_str = "Formato inválido"
+                        
+                        contract_type = contract.get('type', 'Contrato')
+                        
+                        accepted_html = f"""
+                        <div class="contract-list-item">
+                            <span class="contract-item-number">{i + 1}</span>
+                            <div class="contract-item-content">
+                                <div class="contract-item-details">
+                                    <p>Tipo do contrato: <strong>{contracts_type_map[contract_type]}</strong></p>
+                                    <p>Data de Aceite: <strong>{accept_date_str}</strong></p>
+                                </div>
+                                <div class="contract-item-actions">
+                                    <a href="#" class="contract-btn btn-info-accept">Informações do Aceite</a>
+                                    <a href="{contract.get('filename', '#')}" target="_blank" class="contract-btn btn-view-contract">Visualizar contrato</a>
+                                </div>
+                            </div>
+                        </div>
+                        """
+                        st.markdown(accepted_html, unsafe_allow_html=True)
+
+                st.divider()
+
+                # --- Seção de Upload ---
+                st.subheader("Enviar Novo Contrato para Aceite")
+                uploaded_file = st.file_uploader("Selecione o arquivo do contrato", label_visibility="collapsed")
+                    
+                if uploaded_file:
+                    if st.button("Enviar para Aceite", use_container_width=True):
+                        with st.spinner("Enviando contrato..."):
+                            success, message = upload_contract_for_acceptance(user_id, uploaded_file)
+                            if success:
+                                st.success(message)
+                                get_accepted_contracts.clear()
+                                get_pending_contracts.clear()
+                                
+                                filename = f"temp_{uploaded_file.name}"
+                                with open(filename, "wb") as f:
+                                    f.write(uploaded_file.getvalue())
+
+                                result = upload_to_drive(filename, uploaded_file.name, uploaded_file.type)
+                                if result:
+                                    st.toast("Arquivo enviado para o Google Drive com sucesso!", icon="✅")
+                                else:
+                                    st.toast("Erro ao enviar o arquivo para o Google Drive!", icon="❌")
+
+                                st.rerun()
+                            else:
+                                st.error(message)
             
-        #     with cols[0]:
-        #         st.markdown(f'<div class="contract-number">{i+1}</div>', unsafe_allow_html=True)
-            
-        #     with cols[1]:
-        #         st.markdown(f"""
-        #         <div class="contract-details">
-        #             <p class="capitalize">Tipo do contrato: <strong>{contract['type']}</strong></p>
-        #             <p>Data de Aceite: <strong>{contract['date']}</strong></p>
-        #         </div>
-        #         """, unsafe_allow_html=True)
-
-        #     with cols[2]:
-        #         st.markdown('<div class="contract-actions">', unsafe_allow_html=True)
-        #         st.button("Informações do Aceite", key=f"info_accept_{i}", use_container_width=True)
-        #         st.markdown(f"""
-        #         <div class="view-contract-link">
-        #             <a href="{contract['url']}" target="_blank">Visualizar contrato</a>
-        #         </div>
-        #         """, unsafe_allow_html=True)
-        #         st.markdown('</div>', unsafe_allow_html=True)
-
-        #     st.markdown('</div>', unsafe_allow_html=True)
-        
-        # # --- Seção de Upload de Novo Contrato ---
-        # st.markdown('<div class="contract-upload-area">', unsafe_allow_html=True)
-        # st.subheader("Subir Novo Contrato")
-        
-        # upload_cols = st.columns([2, 1])
-        # with upload_cols[0]:
-        #     uploaded_file = st.file_uploader(
-        #         "Selecione o arquivo do contrato:", 
-        #         type=['pdf', 'docx', 'jpg', 'png'],
-        #         label_visibility="collapsed"
-        #     )
-        
-        # with upload_cols[1]:
-        #     # O botão "Enviar" fica desabilitado até que um arquivo seja selecionado
-        #     send_disabled = uploaded_file is None
-        #     if st.button("Enviar Contrato", use_container_width=True, disabled=send_disabled):
-        #         with st.spinner(f"Enviando '{uploaded_file.name}'..."):
-        #             # Lógica para salvar o arquivo (ex: enviar para um bucket S3, API, etc.)
-        #             # Exemplo:
-        #             # save_contract_to_backend(st.session_state.user_to_edit_id, uploaded_file)
-        #             st.success(f"Contrato '{uploaded_file.name}' enviado com sucesso!")
-
-        # st.markdown('</div>', unsafe_allow_html=True)
-        
-        # st.markdown("---")
+            st.markdown("---")
 
         st.markdown(f"""<h3 class="section-title"><strong>Funcionalidades</strong><span class="material-icons tooltip-icon" title="{tooltip_funcionalidades}">toggle_on</span></h3>""", unsafe_allow_html=True) 
         cols_func = st.columns(5) 
@@ -872,7 +911,7 @@ Telefone: {st.session_state.form_tel_celular}""",
             st.text_input("Operadora:", key="contract_operadora_input", value="VIVO / SATELITAL")
             st.text_input("Forma de Cobrança:", key="contract_forma_cobranca_input", value="BOLETO / ASSINATURA")
             st.text_input("Atendente:", key="contract_atendente_input", value=st.session_state.username)
-            st.number_input("Valor de Reinstalação (R$):", min_value=0.0, key="contract_valor_reinstalacao_input", value=100.0, format="%.2f", disabled=True)
+            st.number_input("Valor de Reinstalação (R$):", min_value=0.0, key="contract_valor_reinstalacao_input", value=100.0 if not st.session_state.contract_local_instalacao_input == "Sorriso - MT" else 120.0, format="%.2f")
             if st.session_state.contract_tipo_contrato_select == "PLANO2":
                 st.number_input("Valor da Cobertura (R$):", min_value=0.0, key="contract_valor_cobertura_input", format="%.2f")
 
@@ -1367,7 +1406,7 @@ def inicio():
             
             # Ícone para 'aviso financeiro'
             financial_status = user.get('financial_status', 0)
-            financ_icon = '<span class="material-icons active-icon" title="Com Aviso">check_box</span>' if financial_status else '<span class="material-icons" title="Sem Aviso">check_box_outline_blank</span>'
+            financ_icon = '<span class="material-icons active-icon" title="Com Aviso">check_box</span>' if not financial_status else '<span class="material-icons" title="Sem Aviso">check_box_outline_blank</span>'
 
             # Link para a página de edição (exemplo)
             edit_link = f"/?user_id={user_id}"
@@ -1395,7 +1434,7 @@ def inicio():
                             <span class='material-icons' style='font-size: 1rem; color: black;'>add</span>
                             <span class="tooltip">Clique para adicionar um novo rastreador a esse usuário.</span>
                         </a>
-                        <a href="/?actual_search_client={search_query_client}&report_client_name={user_name}&report_client_id={user_id}{f'&all_vehicles={vehicle_list_str}' if vehicle_list_str else ''}" target="_self" class="tooltip-container">
+                        <a href="/?actual_search_client={search_query_client}{'&load_vehicle_data_search=1' if st.session_state.show_vehicles_checkbox else ''}&report_client_name={user_name}&report_client_id={user_id}{f'&all_vehicles={vehicle_list_str}' if vehicle_list_str else ''}" target="_self" class="tooltip-container">
                             <span class='material-icons' style='font-size: 1rem; color: black;'>description</span>
                             <span class="tooltip">Clique para criar um relatório de quilometragem e infrações para esse cliente.</span>
                         </a>
@@ -1426,6 +1465,7 @@ def inicio():
                                 <th>Fabricante</th>
                                 <th>Grupo</th>
                                 <th>Número do Chip</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1451,9 +1491,24 @@ def inicio():
                                 <td>{fabricante}</td>
                                 <td>{all_vehicle_data.get('groups')}</td>
                                 <td>{chip_number}</td>
-                            </tr>
-                    """
+                                <td class="action-icons">
+                                    <div class="actions-wrapper">
+                                """
 
+                    if all_vehicle_data.get("manufacturer_id") != 10:
+                        table_html += f"""
+                                        <a href="/?send_reset_to={vehicle}&actual_search_client={search_query_client}{'&load_vehicle_data_search=1' if st.session_state.show_vehicles_checkbox else ''}" target="_self" class="tooltip-container">
+                                            <span class='material-icons' style='font-size: 1rem; color: black;'>sync</span>
+                                            <span class="tooltip">Clique para resetar o rastreador.</span>
+                                        </a>
+                                        """
+                    
+                    table_html += f"""
+                                    </div>
+                                </td>
+                            </tr>
+                            """
+                    
                 table_html += """
                         </tbody>
                     </table>
@@ -1491,8 +1546,40 @@ def main():
     if "user_to_edit_data" not in st.session_state:
         st.session_state.user_to_edit_data = None
 
-    # Verifica os parâmetros da URL para navegar para a página de edição
+    # Verifica os parâmetros da URL
+
     query_params = st.query_params
+
+    if "send_reset_to" in query_params:
+        vehicle_data_str = query_params["send_reset_to"]
+        vehicle_data_str = vehicle_data_str.replace("'", '"')
+        vehicle_data = json.loads(vehicle_data_str)
+
+        st.session_state.actual_search_client = query_params.get("actual_search_client", "")
+
+        if query_params and "load_vehicle_data_search" in query_params:
+            st.session_state.show_vehicles_checkbox = True
+        else:
+            st.session_state.show_vehicles_checkbox = False
+
+        st.query_params.clear()
+
+        get_all_vehicle_data.clear()
+
+        all_vehicle_data = get_all_vehicle_data(vehicle_data.get('id', ''))
+
+        result = process_reset_sending(all_vehicle_data)
+
+        if isinstance(result, str):
+            st.toast(result, icon="🚨")
+        else:
+            if result.get("resets_sent"):
+                st.toast(f"Resets ({', '.join(result.get('resets_sent'))}) enviados com sucesso!", icon="✅")
+
+            if result.get("resets_not_sent"):
+                st.toast(f"Não foi possível enviar alguns resets ({', '.join(result.get('resets_not_sent'))}).", icon="🚨")
+
+
     if "delete_user" in query_params:
         id_to_delete = query_params["delete_user"]
 
@@ -1524,6 +1611,8 @@ def main():
 
     if "go_home" in query_params:
         st.session_state.page_to_show = "inicio"
+        del st.session_state.its_first_run
+
         st.query_params.clear()
 
     if "report_client_name" in query_params:
@@ -1550,7 +1639,7 @@ def main():
         if st.session_state.user_to_edit_id is not None and st.session_state.loaded_user_id != st.session_state.user_to_edit_id:
             with st.spinner(f"Carregando dados do usuário ID: {st.session_state.user_to_edit_id}..."):
                 st.session_state.user_to_edit_data = get_user_data_by_id(st.session_state.user_to_edit_id)
-                print(f"Dados do usuário carregados: {st.session_state.user_to_edit_data}")
+
                 if st.session_state.user_to_edit_data:
                     st.session_state.loaded_user_id = st.session_state.user_to_edit_id
 

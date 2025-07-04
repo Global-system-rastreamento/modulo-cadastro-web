@@ -14,9 +14,9 @@ REDIS_PASSWORD = os.getenv('REDIS_PASSWORD') # Ensure this is set in .env or pro
 REDIS_DB_MAIN = int(os.getenv('REDIS_DB_MAIN', 8))
 
 @lru_cache(maxsize=1)
-def get_redis_client():
+def get_redis_client(db: int = REDIS_DB_MAIN):
     try:
-        redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, db=REDIS_DB_MAIN, decode_responses=True)
+        redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, db=db, decode_responses=True)
         redis_client.ping()
         return redis_client
     except redis.exceptions.ConnectionError as e:

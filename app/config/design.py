@@ -54,57 +54,45 @@ def apply_design():
         border-color: #ff4d4f !important;
     }
 
-    /* --- Estilo para a seção de contratos no cadastro --- */
-    .ancora-contratos ~ div[data-testid="stVerticalBlockBorderWrapper"] {
-            background-color: #f9f9f9;
-            padding: 1.2rem 1.2rem 1.5rem 1.2rem;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            /* Podemos até adicionar uma transição suave para um efeito mais polido */
-            transition: box-shadow 0.2s ease-in-out;
-        }
+    /* --- Estilo para seção de contratos --- */
+    
+    .contract-list { list-style: none; padding: 0; }
+    .contract-list-item {
+        display: flex; align-items: flex-start; background-color: #FFFFFF;
+        border: 1px solid #e9ecef; border-radius: 12px; padding: 1.5rem;
+        margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    .contract-item-number {
+        font-size: 1.2rem; font-weight: 500; color: #555;
+        padding-top: 5px; margin-right: 2rem;
+    }
+    .contract-item-content {
+        flex-grow: 1; display: flex; justify-content: space-between;
+        align-items: center; flex-wrap: wrap; gap: 1rem;
+    }
+    .contract-item-details p { margin: 0; font-size: 0.95rem; color: #444; }
+    .contract-item-details p strong { color: #000; text-transform: capitalize; }
+    .contract-item-actions {
+        display: flex; flex-direction: column; gap: 0.75rem; min-width: 220px;
+    }
+    .contract-btn {
+        display: block; text-decoration: none; text-align: center;
+        padding: 0.6rem 1rem; border-radius: 8px; font-weight: bold;
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-info-accept {
+        background-color: var(--franchisee-main-color, #006535); color: white;
+        border: 2px solid var(--franchisee-main-color, #006535);
+    }
+    a.btn-info-accept { color: white; }
+    .btn-info-accept:hover {
+        background-color: white; color: var(--franchisee-main-color, #006535);
+    }
+    .btn-view-contract {
+        background-color: white; color: #0d6efd; border: 1px solid #0d6efd;
+    }
+    .btn-view-contract:hover { background-color: #0d6efd; color: white; }
 
-        .ancora-contratos ~ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        /* O resto do CSS permanece o mesmo, pois já é específico o suficiente */
-        .view-contract-link a {
-            display: block;
-            padding: 0.5rem 0.75rem;
-            background-color: #fff;
-            color: var(--primary-color, #0d6efd);
-            border: 1px solid var(--primary-color, #0d6efd);
-            border-radius: 0.5rem;
-            text-align: center;
-            text-decoration: none;
-            transition: all 0.2s ease-in-out;
-            margin-top: 0.8rem;
-        }
-        .view-contract-link a:hover {
-            background-color: var(--primary-color, #0d6efd);
-            color: white;
-        }
-        
-        div[data-testid="stButton"] > button {
-            width: 100%;
-        }
-
-        .contract-details p {
-            margin: 0;
-            font-size: 0.95rem;
-            color: #444;
-        }
-        .contract-details p strong {
-            color: #000;
-        }
-        
-        .section-subheader {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 1rem;
-        }
     
     /** --- Fim da seção de contratos --- */
 
@@ -136,6 +124,9 @@ def apply_design():
     .stExpander summary {
         background-color: transparent !important;
     }
+    /* --- FIM: ESTILO PADRÃO PARA st.container --- */
+
+
     /* Principalmente o container geral da página e os que estão dentro de colunas */
     .main .stVerticalBlock, .stColumn .stVerticalBlock {
         background-color: transparent;

@@ -1,4 +1,4 @@
-import unidecode
+from unidecode import unidecode
 from datetime import datetime
 from app.services.document_validator import validar_cpf, validar_cnpj
 from app.services.google_sheets_service import update_client_name_in_sheet
@@ -10,6 +10,10 @@ import copy
 import json
 from time import sleep
 from deepdiff import DeepDiff
+import re
+import os
+import logging
+
 
 
 X_TOKEN_API = 'c0f9e2df-d26b-11ef-9216-0e3d092b76f7'
@@ -63,7 +67,7 @@ def atualizar_cadastro(dados_formulario, is_cnpj=False, update_data=None):
     data["sisras_user"]["fres"] = dados_formulario['tel_residencial']
     data["sisras_user"]["login"] = dados_formulario["login"]
     data["sisras_user"]["nivel"] = niveis.index(dados_formulario['tipo_usuario']) + 1
-    data["sisras_user"]["nome"] = unidecode.unidecode(dados_formulario["nome"]).upper()
+    data["sisras_user"]["nome"] = unidecode(dados_formulario["nome"]).upper()
     data["sisras_user"]["respon"] = dados_formulario['responsavel'].upper()
     data["sisras_user"]["pessoa"] = 2 if is_cnpj else 1
     data["sisras_user"]["respfr"] = 2
@@ -98,7 +102,7 @@ def cadastrar_cliente(dados_formulario=None, is_cnpj=False):
             "nivel": niveis.index(dados_formulario['tipo_usuario']) + 1,
             "admin": 0,
             "pessoa": 2 if is_cnpj else 1,
-            "nome": unidecode.unidecode(dados_formulario["nome"]).upper(),
+            "nome": unidecode(dados_formulario["nome"]).upper(),
             "respon": dados_formulario['responsavel'].upper(),
             "endereco": dados_formulario['endereco'].upper(),
             "fcel": dados_formulario['tel_celular'],
@@ -127,6 +131,7 @@ def cadastrar_cliente(dados_formulario=None, is_cnpj=False):
         st.error("Erro ao cadastrar cliente. Verifique os dados e tente novamente.")
         st.error(response.json())
 
+@st.cache_data
 def get_feature_status(user_id, feature_name):
     """
     Checks the status of a specific feature for a user.
@@ -369,7 +374,7 @@ def get_vehicles_data(search_term=None, current_page=None, items_per_page=None):
         st.session_state.fetched_data = False
         return []
 
-
+@st.cache_data
 def get_user_data_by_id(user_id):
     """Faz a requisição à API para obter os dados de um único usuário."""
     if not user_id:
@@ -683,3 +688,120 @@ def send_telegram_update_report(old_data, new_data, chat_id='-4875656287'):
 
     # Send the message
     send_single_telegram_message(message, chat_id)
+
+
+@st.cache_data
+def get_pending_contracts(user_id):
+    """Busca os contratos que precisam de aceite para um determinado usuário."""
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/contracts/manager/need/accept?userId={user_id}", headers=COMMON_API_HEADERS)
+        response.raise_for_status() # Lança um erro para status codes 4xx/5xx
+        return response.json(), None
+    except requests.exceptions.RequestException as e:
+        return None, f"Erro ao buscar contratos pendentes: {e}"
+
+@st.cache_data
+def get_accepted_contracts(user_id):
+    """Busca os contratos já aceitos de um determinado usuário."""
+        
+    try:
+        response = requests.get(f"{API_BASE_URL}/contracts/manager/accepted?userId={user_id}", headers=COMMON_API_HEADERS)
+        response.raise_for_status()
+        return response.json(), None
+    except requests.exceptions.RequestException as e:
+        return None, f"Erro ao buscar contratos aceitos: {e}"
+
+def upload_contract_for_acceptance(user_id, uploaded_file, contract_type='tracker'):
+    """Envia um novo contrato para o aceite do cliente."""
+
+    files = {'file': (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
+    params = {'type': contract_type, 'clientId': user_id}
+    
+    try:
+        response = requests.post(f"{API_BASE_URL}/contracts/v2", headers=COMMON_API_HEADERS, params=params, files=files)
+        response.raise_for_status()
+        if response.text == '"Contract saved"':
+            return True, "Contrato enviado para aceite com sucesso!"
+        else:
+            return False, f"Resposta inesperada do servidor: {response.text}"
+    except requests.exceptions.RequestException as e:
+        return False, f"Erro ao enviar contrato: {e}"
+
+def padronizar_telefone(telefone):
+    # Remove tudo que não for número
+    telefone = re.sub(r'\D', '', telefone)
+
+    # Lógicas de normalização
+    if len(telefone) == 13 and telefone.startswith('55'):
+        # Ex: 55 + DDD + 9 dígitos (celular)
+        return telefone
+    elif len(telefone) == 12 and telefone.startswith('55'):
+        # Ex: 55 + DDD + 8 dígitos (fixo)
+        return telefone
+    elif len(telefone) == 11 and telefone[2] == '9':
+        # Ex: DDD + 9 dígitos → celular nacional sem código do país
+        return '55' + telefone
+    elif len(telefone) == 10:
+        # Ex: DDD + 8 dígitos → fixo nacional sem código do país
+        return '55' + telefone
+    elif len(telefone) == 13 and not telefone.startswith('55'):
+        # Ex: 1 + DDD + número (mal formatado) → remove 1º dígito e insere 55
+        return '55' + telefone[1:]
+    elif len(telefone) > 13 and '55' in telefone:
+        # Remove excesso de dígitos e mantém estrutura correta
+        telefone = telefone[telefone.find('55'):]
+        return telefone[:13]
+    else:
+        return None
+
+def qual_fornecedora(observation):
+    if observation:
+        if bool(re.search(r"\beseye\b", unidecode(observation), re.IGNORECASE)):
+            return 'ESEYE'
+        
+        if bool(re.search(r"\bvs\b", unidecode(observation), re.IGNORECASE)):
+            return 'VS'
+        
+        if bool(re.search(r"\bvsolucoes\b", unidecode(observation), re.IGNORECASE)):
+            return 'VS'
+        
+        if bool(re.search(r"\blinks field\b", unidecode(observation), re.IGNORECASE)):
+            return 'LINKS'
+        
+        if bool(re.search(r"\blf\b", unidecode(observation), re.IGNORECASE)):
+            return 'LINKS'
+        
+        if bool(re.search(r"\blinksfield\b", unidecode(observation), re.IGNORECASE)):
+            return 'LINKS'
+        
+        if bool(re.search(r"\btelefonica\b", unidecode(observation), re.IGNORECASE)):
+            return 'VIVO'
+        
+        if bool(re.search(r"\ballcom\b", unidecode(observation), re.IGNORECASE)):
+            return 'ALLCOM'
+        
+        if bool(re.search(r"\bveye\b", unidecode(observation), re.IGNORECASE)):
+            return 'VEYE'
+        
+        if bool(re.search(r"\bvirtueyes\b", unidecode(observation), re.IGNORECASE)):
+            return 'VEYE'
+        
+        if bool(re.search(r"\bvirtu\b", unidecode(observation), re.IGNORECASE)):
+            return 'VEYE'
+        
+        if bool(re.search(r"\blink\b", unidecode(observation), re.IGNORECASE)):
+            return 'LINK'
+        
+        if bool(re.search(r"\btns\b", unidecode(observation), re.IGNORECASE)):
+            return 'LINK'
+        
+        if bool(re.search(r"\blinksol\b", unidecode(observation), re.IGNORECASE)):
+            return 'LINK'
+
+
+def sanitize_tel(tel):
+    """Removes country code 55 if present."""
+    if isinstance(tel, str) and tel.startswith('55') and (len(tel) == 12 or len(tel) == 13):
+        tel = tel[2:]
+    return tel
