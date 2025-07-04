@@ -1615,7 +1615,9 @@ def main():
 
     if "go_home" in query_params:
         st.session_state.page_to_show = "inicio"
-        del st.session_state.its_first_run
+
+        if "its_first_run" in st.session_state:
+            del st.session_state.its_first_run
 
         st.query_params.clear()
 
