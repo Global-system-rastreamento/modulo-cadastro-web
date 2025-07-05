@@ -568,6 +568,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                 # --- Seção de Contratos Aceitos ---
                 st.subheader("Contratos Aceitos")
                 accepted_contracts, accepted_error = get_accepted_contracts(user_id)
+                print(accepted_contracts)
                 if accepted_error:
                     st.error(accepted_error)
                 elif not accepted_contracts:
@@ -583,7 +584,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                             except (ValueError, TypeError) as e:
                                 accept_date_str = "Formato inválido"
                         
-                        contract_type = contract.get('type', 'Contrato')
+                        contract_type = contract.get('type', 'tracker')
                         
                         accepted_html = f"""
                         <div class="contract-list-item">
