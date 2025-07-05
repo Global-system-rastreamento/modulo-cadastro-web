@@ -544,7 +544,7 @@ Telefone: {st.session_state.form_tel_celular}""",
                 else:
                     st.markdown('<div class="contract-list">', unsafe_allow_html=True)
                     for i, contract in enumerate(pending_contracts):
-                        contract_type = contract.get('type', 'N/A')
+                        contract_type = contract.get('type', 'tracker')
                         contract_link = contract.get('link', '#')
                         pending_html = f"""
                         <div class="contract-list-item">
