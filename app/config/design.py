@@ -112,7 +112,7 @@ def apply_design():
         border: 2px solid #bababa;
         margin-bottom: 2rem;
     }
-    .st-bb .stVerticalBlock {
+    .stDialog .stVerticalBlock {
         background-color: transparent;
         border: none;
         box-shadow: none;
