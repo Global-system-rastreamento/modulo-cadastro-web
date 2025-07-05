@@ -29,6 +29,11 @@ def apply_design():
         color: var(--body-text-color) !important;
     }
 
+    .stAppHeader {
+        visibility: hidden !important;
+
+    }
+
     section[data-testid="stSidebar"] {
         display: none !important;
     }
@@ -155,6 +160,7 @@ def apply_design():
     }
     .stMainBlockContainer {
         background-color: #daeaf0 !important;
+        padding-top: 1rem !important;
     }
     .client-management-header {
         display: flex; justify-content: space-between; align-items: flex-end; padding: 0 1rem; flex-wrap: wrap;
